@@ -4,25 +4,8 @@ import { t } from '../js/i18n.js';
 
 export async function renderDashboard(container) {
   container.innerHTML = `
-    <div class="page-header">
-      <h2 class="page-title neon-pulse">${t('dash.title')}</h2>
-      <p class="page-subtitle">${t('dash.subtitle')}</p>
-    </div>
-
-    <div id="web-hero-banner" style="display:none; background: linear-gradient(135deg, rgba(77, 255, 145, 0.1) 0%, rgba(0, 0, 0, 0) 100%); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; position: relative; overflow: hidden;">
-        <div style="position:relative; z-index:2;">
-            <h3 style="color:var(--accent-primary); margin-bottom:8px; font-size:20px;">🚀 Ready to Boost Your FPS?</h3>
-            <p style="color:var(--text-main); margin-bottom:16px; max-width:600px;">
-                You are currently viewing the <b>Web Demo</b>. Download the full desktop application to unlock real-time RAM clearing, CPU unparking, and advanced registry optimizations.
-            </p>
-            <a href="https://rustopti.fun/RustOpti_2.2.0_x64-setup.exe" class="btn btn-primary btn-ripple" style="padding:12px 24px; font-weight:600;">
-                Download RustOpti Installer (.exe)
-            </a>
-        </div>
-        <div style="position:absolute; right:-20px; top:-20px; font-size:120px; opacity:0.05; font-weight:900; pointer-events:none;">RUST</div>
-    </div>
-
-    <div class="card-grid" id="sys-cards">
+    <!-- System info cards -->
+    <div class="card-grid" id="sys-cards" style="margin-bottom:24px">
       <div class="card card-enter hex-bg">
         <div class="card-icon">[CPU]</div>
         <div class="card-title">${t('dash.processor')}</div>
@@ -51,19 +34,97 @@ export async function renderDashboard(container) {
       </div>
     </div>
 
-    <div class="section">
-      <h3 class="section-title">${t('dash.quick_optimize')}</h3>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">${t('dash.quick_desc')}</p>
-      <div class="btn-group">
-        <button class="btn btn-primary btn-ripple" id="btn-quick-optimize">${t('dash.btn.optimize_all')}</button>
-        <button class="btn btn-success btn-ripple" id="btn-backup">${t('dash.btn.backup')}</button>
-        <button class="btn btn-ripple" id="btn-kill-bloat">${t('dash.btn.kill_bloat')}</button>
+    <!-- Main optimize block -->
+    <div class="optimize-hero">
+      <div class="optimize-hero-status" id="opt-status-text">Готово до оптимізації</div>
+      <button class="btn-optimize" id="btn-quick-optimize">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        ОПТИМІЗУВАТИ
+      </button>
+      <div class="optimize-progress-wrap" id="optimize-progress" style="display:none">
+        <div class="optimize-step-label" id="opt-step-label">Підготовка...</div>
+        <div class="stat-bar" style="height:6px;border-radius:3px;margin-top:8px">
+          <div id="opt-progress-bar" class="stat-bar-fill" style="width:0%;transition:width 0.4s ease"></div>
+        </div>
+        <div class="optimize-step-count" id="opt-step-count">0/8</div>
+      </div>
+      <div class="optimize-actions">
+        <button class="btn-opt-secondary" id="btn-backup">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Зробити бекап
+        </button>
+        <button class="btn-opt-secondary" id="btn-kill-bloat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Вбити фонові процеси
+        </button>
       </div>
     </div>
 
-    <div class="section">
-      <h3 class="section-title">${t('dash.disks')}</h3>
-      <div id="dash-disks" class="card-grid"></div>
+    <!-- Instant vs reboot tweaks -->
+    <div class="tweaks-split">
+      <div class="tweaks-group">
+        <div class="tweaks-group-header instant">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Діє одразу
+        </div>
+        <div class="tweaks-list" id="tweaks-instant">
+          <div class="tweak-item">
+            <span class="tweak-dot instant"></span>
+            <span>Power Plan — Максимальна продуктивність</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot instant"></span>
+            <span>Timer Resolution — 0.5ms</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot instant"></span>
+            <span>RAM — очистка пам'яті</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot instant"></span>
+            <span>Мережа — Nagle, TCP No Delay</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot instant"></span>
+            <span>CPU — розпарковка ядер</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot instant"></span>
+            <span>Реєстр — Game DVR, GPU Priority</span>
+          </div>
+        </div>
+      </div>
+      <div class="tweaks-group">
+        <div class="tweaks-group-header reboot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Після перезавантаження
+        </div>
+        <div class="tweaks-list">
+          <div class="tweak-item">
+            <span class="tweak-dot reboot"></span>
+            <span>MSI Mode — зменшення input lag GPU</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot reboot"></span>
+            <span>HPET — вимкнення (+5-10 FPS на AMD)</span>
+          </div>
+          <div class="tweak-item">
+            <span class="tweak-dot reboot"></span>
+            <span>HW GPU Scheduling</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Web download banner -->
+    <div id="web-hero-banner" style="display:none; background: linear-gradient(135deg, rgba(77, 255, 145, 0.1) 0%, rgba(0, 0, 0, 0) 100%); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); padding: 24px; margin-top: 24px; position: relative; overflow: hidden;">
+        <div style="position:relative; z-index:2;">
+            <h3 style="color:var(--accent-primary); margin-bottom:8px; font-size:18px;">🚀 Завантаж десктоп додаток</h3>
+            <p style="color:var(--text-main); margin-bottom:16px; max-width:600px; font-size:13px;">Веб-версія — тільки демо. Завантаж програму щоб отримати реальний буст FPS.</p>
+            <a href="https://rustopti.fun/RustOpti_2.2.2_x64-setup.exe" class="btn btn-primary btn-ripple" style="padding:10px 20px; font-weight:600; font-size:13px;">
+                ↓ Завантажити .EXE — v2.2.2
+            </a>
+        </div>
     </div>
   `;
 
@@ -116,68 +177,44 @@ export async function renderDashboard(container) {
 
   document.getElementById('btn-quick-optimize')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-quick-optimize');
-    const section = btn.closest('.section');
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.style.pointerEvents = 'none';
-
-    const steps = [
-      { name: 'Backup', fn: () => api.backupAllBeforeOptimization(), label: 'Creating backup...' },
-      { name: 'Registry', fn: () => api.applyRegistryTweaks(), label: 'Applying registry tweaks...' },
-      { name: 'GPU', fn: () => api.applyGpuTweaks(), label: 'Applying GPU tweaks...' },
-      { name: 'Power', fn: () => api.applyPowerTweaks(), label: 'Applying power tweaks...' },
-      { name: 'Network', fn: () => api.applyNetworkTweaks(), label: 'Applying network tweaks...' },
-      { name: 'CPU Cores', fn: () => api.unparkAllCores(), label: 'Unparking CPU cores...' },
-      { name: 'Timer 0.5ms', fn: () => api.boostTimerResolution(), label: 'Boosting timer resolution...' },
-      { name: 'HPET Off', fn: () => api.disableHpet(), label: 'Disabling HPET...' },
-    ];
-
-    // Insert progress bar above button
-    let progressEl = document.getElementById('optimize-progress');
-    if (!progressEl) {
-      const progressHtml = `
-        <div id="optimize-progress" style="margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-            <span id="opt-step-label" style="font-size:12px;color:var(--text-muted)">Starting...</span>
-            <span id="opt-step-count" style="font-size:12px;color:var(--accent-primary);font-family:var(--font-mono)">0/${steps.length}</span>
-          </div>
-          <div class="stat-bar" style="height:8px;border-radius:4px">
-            <div id="opt-progress-bar" class="stat-bar-fill" style="width:0%;transition:width 0.4s ease"></div>
-          </div>
-        </div>
-      `;
-      btn.closest('.btn-group').insertAdjacentHTML('beforebegin', progressHtml);
-    }
-
+    const statusText = document.getElementById('opt-status-text');
+    const progressWrap = document.getElementById('optimize-progress');
     const stepLabel = document.getElementById('opt-step-label');
     const stepCount = document.getElementById('opt-step-count');
     const progressBar = document.getElementById('opt-progress-bar');
+    const rebootNote = document.getElementById('opt-reboot-note');
 
-    logInfo('Starting full optimization...');
-    btn.textContent = '⏳ Working...';
+    btn.disabled = true;
 
-    // Force browser to repaint before starting heavy work
+    const steps = [
+      { name: 'Backup',   fn: () => api.backupAllBeforeOptimization(), label: 'Створення бекапу...' },
+      { name: 'Registry', fn: () => api.applyRegistryTweaks(),         label: 'Оптимізація реєстру...' },
+      { name: 'GPU',      fn: () => api.applyGpuTweaks(),              label: 'Налаштування GPU...' },
+      { name: 'Power',    fn: () => api.applyPowerTweaks(),            label: 'Режим максимальної продуктивності...' },
+      { name: 'Network',  fn: () => api.applyNetworkTweaks(),          label: 'Оптимізація мережі...' },
+      { name: 'CPU',      fn: () => api.unparkAllCores(),              label: 'Розпарковка ядер CPU...' },
+      { name: 'Timer',    fn: () => api.boostTimerResolution(),        label: 'Прискорення таймера...' },
+      { name: 'HPET',     fn: () => api.disableHpet(),                 label: 'Вимкнення HPET...' },
+    ];
+
+    progressWrap.style.display = 'block';
+    stepCount.textContent = `0/${steps.length}`;
+    logInfo('Починаємо оптимізацію...');
+
     await new Promise(r => setTimeout(r, 50));
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      const pct = Math.round(((i) / steps.length) * 100);
-
-      // Update progress UI
       stepLabel.textContent = step.label;
       stepCount.textContent = `${i + 1}/${steps.length}`;
-      progressBar.style.width = `${pct}%`;
-
+      progressBar.style.width = `${Math.round((i / steps.length) * 100)}%`;
       logInfo(`[${i + 1}/${steps.length}] ${step.label}`);
-
-      // Give UI time to repaint before each step
       await new Promise(r => setTimeout(r, 16));
-
       try {
         const results = await step.fn();
         if (Array.isArray(results)) {
           results.forEach(r => r.success ? logSuccess(r.message) : logError(r.message));
-        } else if (results && results.message) {
+        } else if (results?.message) {
           results.success ? logSuccess(results.message) : logError(results.message);
         }
       } catch (e) {
@@ -185,22 +222,19 @@ export async function renderDashboard(container) {
       }
     }
 
-    // Complete
     progressBar.style.width = '100%';
-    stepLabel.textContent = 'Complete!';
+    stepLabel.textContent = '✓ Готово!';
     stepCount.textContent = `${steps.length}/${steps.length}`;
+    statusText.textContent = '✓ Систему оптимізовано';
+    statusText.style.color = 'var(--accent-primary)';
+    rebootNote.style.display = 'block';
+    logSuccess('✓ Оптимізацію завершено! Перезавантаж ПК для повного ефекту.');
 
-    logSuccess('✓ Full optimization complete!');
-
-    // Fade out progress after 3s
     setTimeout(() => {
-      const el = document.getElementById('optimize-progress');
-      if (el) el.style.display = 'none';
-    }, 3000);
+      progressWrap.style.display = 'none';
+    }, 4000);
 
-    btn.textContent = originalText;
     btn.disabled = false;
-    btn.style.pointerEvents = 'auto';
   });
 
   document.getElementById('btn-backup')?.addEventListener('click', async () => {

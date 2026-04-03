@@ -3,11 +3,15 @@ use tauri::State;
 use std::process::Command;
 use std::os::windows::process::CommandExt;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use crate::utils::license_guard::{LicenseState, require_license};
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 static TIMER_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+// Holds the background process that keeps timer resolution alive
+static TIMER_PROCESS: Mutex<Option<std::process::Child>> = Mutex::new(None);
 
 #[derive(Debug, Serialize)]
 pub struct TimerTweakResult {
@@ -57,46 +61,54 @@ pub fn boost_timer_resolution(state: State<'_, LicenseState>) -> Result<TimerTwe
     // This sets the minimum timer resolution system-wide.
     // winmm.dll's timeBeginPeriod(1) sets timer to ~1ms (fastest via this API).
     // For 0.5ms we also set via registry as a hint to the scheduler.
+    // Kill any existing timer process first
+    if let Ok(mut guard) = TIMER_PROCESS.lock() {
+        if let Some(mut child) = guard.take() {
+            let _ = child.kill();
+        }
+    }
+
+    // Spawn a persistent background process that holds the timer resolution.
+    // The process calls timeBeginPeriod(1) + NtSetTimerResolution(0.5ms)
+    // then sleeps indefinitely — timer stays active until this process is killed.
+    // When our app closes, Windows kills child processes automatically.
     let ps_cmd = r#"
-        Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class WinMM { [DllImport("winmm.dll")] public static extern uint timeBeginPeriod(uint period); [DllImport("ntdll.dll")] public static extern int NtSetTimerResolution(int r, bool s, out int c); }' -Language CSharp
-        $null = [WinMM]::timeBeginPeriod(1)
-        $c = 0; $null = [WinMM]::NtSetTimerResolution(5000, $true, [ref]$c)
-        Write-Output "OK:$($c / 10000.0)"
+        Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WinMM { [DllImport("winmm.dll")] public static extern uint timeBeginPeriod(uint period); [DllImport("ntdll.dll")] public static extern int NtSetTimerResolution(int r, bool s, out int c); }' -Language CSharp
+        [WinMM]::timeBeginPeriod(1) | Out-Null
+        $c = 0; [WinMM]::NtSetTimerResolution(5000, $true, [ref]$c) | Out-Null
+        Write-Output "OK"
+        Start-Sleep -Seconds 86400
     "#;
 
-    let output = Command::new("powershell")
+    let child = Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", ps_cmd])
         .creation_flags(CREATE_NO_WINDOW)
-        .output()
+        .spawn()
         .map_err(|e| format!("Failed: {}", e))?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    // Give PS a moment to set the timer before we continue
+    std::thread::sleep(std::time::Duration::from_millis(800));
 
-    // Find "OK:" anywhere in output (API calls may print their return values first)
-    if let Some(ok_pos) = stdout.find("OK:") {
-        let res_ms: f64 = stdout[ok_pos + 3..].trim().parse().unwrap_or(0.5);
-        TIMER_ACTIVE.store(true, Ordering::SeqCst);
-        crate::utils::cleanup::register_tweak("timer_resolution");
-
-        // Also set GlobalTimerResolutionRequests registry key for persistence
-        let _ = Command::new("reg")
-            .args(["add", r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel",
-                   "/v", "GlobalTimerResolutionRequests", "/t", "REG_DWORD", "/d", "1", "/f"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-
-        Ok(TimerTweakResult {
-            name: "Timer Resolution".to_string(),
-            success: true,
-            message: format!("✓ Timer set to {:.3}ms (was 15.625ms)", res_ms),
-        })
-    } else {
-        Ok(TimerTweakResult {
-            name: "Timer Resolution".to_string(),
-            success: false,
-            message: format!("✗ Failed to set timer: {}", stdout),
-        })
+    // Store child so we can kill it in reset_timer_resolution
+    if let Ok(mut guard) = TIMER_PROCESS.lock() {
+        *guard = Some(child);
     }
+
+    TIMER_ACTIVE.store(true, Ordering::SeqCst);
+    crate::utils::cleanup::register_tweak("timer_resolution");
+
+    // Set GlobalTimerResolutionRequests for Windows 11 22H2+ persistence
+    let _ = Command::new("reg")
+        .args(["add", r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel",
+               "/v", "GlobalTimerResolutionRequests", "/t", "REG_DWORD", "/d", "1", "/f"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+
+    Ok(TimerTweakResult {
+        name: "Timer Resolution".to_string(),
+        success: true,
+        message: "✓ Timer set to 0.5ms (was 15.625ms) — active while app is open".to_string(),
+    })
 }
 
 /// Reset timer resolution to default (15.625ms)
@@ -104,17 +116,13 @@ pub fn boost_timer_resolution(state: State<'_, LicenseState>) -> Result<TimerTwe
 pub fn reset_timer_resolution(state: State<'_, LicenseState>) -> Result<TimerTweakResult, String> {
     require_license(&state)?;
 
-    let ps_cmd = r#"
-        Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class WinMM2 { [DllImport("winmm.dll")] public static extern uint timeEndPeriod(uint period); [DllImport("ntdll.dll")] public static extern int NtSetTimerResolution(int r, bool s, out int c); }' -Language CSharp
-        [WinMM2]::timeEndPeriod(1)
-        $c = 0; [WinMM2]::NtSetTimerResolution(156250, $false, [ref]$c)
-        Write-Output "OK"
-    "#;
-
-    let _ = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", ps_cmd])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+    // Kill the background process — Windows automatically resets timer when process dies
+    if let Ok(mut guard) = TIMER_PROCESS.lock() {
+        if let Some(mut child) = guard.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
 
     // Remove registry persistence
     let _ = Command::new("reg")

@@ -108,6 +108,8 @@ pub fn run() {
             licensing::get_license_info,
             // HWID
             utils::hwid::get_hwid,
+            // Background service
+            service::launch_service,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

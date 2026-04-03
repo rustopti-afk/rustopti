@@ -297,10 +297,19 @@ export const validateLicenseKey = async (key) => {
   try {
     const result = await invoke('validate_license_remote', { key, hwid });
     if (result.error) return { success: false, message: result.error };
+
+    // Launch background service after successful activation
+    if (result.success) {
+      launchService().catch(() => {});
+    }
+
     return result;
   } catch (e) {
     return { success: false, message: `System error: ${e}` };
   }
 };
+
+// Launch rustopti-service.exe in background (keeps timer resolution active)
+export const launchService = () => invoke('launch_service');
 
 

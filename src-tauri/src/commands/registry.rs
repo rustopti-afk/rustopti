@@ -126,7 +126,67 @@ pub fn apply_registry_tweaks(state: State<'_, LicenseState>) -> Result<Vec<Regis
     }));
 
     // 7. Enable Hardware GPU Scheduling
+    // Only apply on supported GPUs (requires WDDM 2.7+ driver, Win10 2004+)
+    // Skip on GTX 900/1000 series and older to prevent grey screen issues
     results.push(apply_tweak("Enable HW GPU Scheduling", || {
+        // Check Windows build — requires 19041+ (Win10 2004)
+        let win_build = registry_helper::get_dword(
+            HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
+            "CurrentBuildNumber",
+        ).unwrap_or(0);
+
+        // Read as string since CurrentBuildNumber is REG_SZ
+        let build_str: String = {
+            use winreg::RegKey;
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            hklm.open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
+                .and_then(|k| k.get_value::<String, _>("CurrentBuildNumber"))
+                .unwrap_or_default()
+        };
+        let build: u32 = build_str.trim().parse().unwrap_or(win_build);
+
+        if build < 19041 {
+            return Err("HW GPU Scheduling requires Windows 10 version 2004 or newer".to_string());
+        }
+
+        // Check GPU driver version via registry — skip Maxwell/Pascal (GTX 900/1000)
+        // These use WDDM < 2.7 and can grey-screen with HwSchMode=2
+        let gpu_ok = {
+            use winreg::RegKey;
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let enum_path = r"SYSTEM\CurrentControlSet\Enum\PCI";
+            let mut supported = true;
+
+            if let Ok(pci) = hklm.open_subkey(enum_path) {
+                'outer: for dev in pci.enum_keys().filter_map(|k| k.ok()) {
+                    let dev_path = format!(r"{}\{}", enum_path, dev);
+                    if let Ok(dk) = hklm.open_subkey(&dev_path) {
+                        for inst in dk.enum_keys().filter_map(|k| k.ok()) {
+                            let inst_path = format!(r"{}\{}", dev_path, inst);
+                            if let Ok(ik) = hklm.open_subkey(&inst_path) {
+                                let class: String = ik.get_value("Class").unwrap_or_default();
+                                if !class.eq_ignore_ascii_case("Display") { continue; }
+                                let desc: String = ik.get_value("DeviceDesc").unwrap_or_default();
+                                let desc_lower = desc.to_lowercase();
+                                // GTX 900 (Maxwell) and GTX 1000 (Pascal) don't support HwSch
+                                if (desc_lower.contains("gtx 9") || desc_lower.contains("gtx 10"))
+                                    && desc_lower.contains("nvidia") {
+                                    supported = false;
+                                    break 'outer;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            supported
+        };
+
+        if !gpu_ok {
+            return Err("HW GPU Scheduling skipped: not supported on GTX 900/1000 series".to_string());
+        }
+
         registry_helper::set_dword(
             HKEY_LOCAL_MACHINE,
             r"SYSTEM\CurrentControlSet\Control\GraphicsDrivers",

@@ -16,3 +16,4 @@ pub mod licensing;
 pub mod timer_tweaks;
 pub mod system_tweaks;
 pub mod game_boost;
+pub mod service;

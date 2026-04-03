@@ -29,7 +29,29 @@ pub struct SystemTweakStatus {
 // Reduces input lag by 2-5ms. Works on all modern GPUs.
 // ═══════════════════════════════════════════════════════════════
 
+fn is_igpu(inst_key: &winreg::RegKey) -> bool {
+    // Intel integrated graphics — MSI mode on iGPU causes black screen
+    // when combined with a dedicated GPU (Optimus/hybrid graphics)
+    let desc: String = inst_key.get_value("DeviceDesc").unwrap_or_default();
+    let desc_lower = desc.to_lowercase();
+    let hw_id: String = inst_key.get_value("HardwareID").unwrap_or_default();
+    let hw_lower = hw_id.to_lowercase();
+
+    // Intel iGPU: "Intel UHD Graphics", "Intel Iris", "Intel HD Graphics"
+    let is_intel = desc_lower.contains("intel") && (
+        desc_lower.contains("uhd") ||
+        desc_lower.contains("iris") ||
+        desc_lower.contains("hd graphics") ||
+        hw_lower.contains("ven_8086")
+    );
+    is_intel
+}
+
 fn is_display_device(inst_key: &winreg::RegKey) -> bool {
+    // Skip Intel iGPU — MSI mode causes black screen on hybrid GPU systems
+    if is_igpu(inst_key) {
+        return false;
+    }
     // Primary check: Class == "Display"
     let class: String = inst_key.get_value("Class").unwrap_or_default();
     if class.eq_ignore_ascii_case("Display") {

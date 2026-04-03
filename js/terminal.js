@@ -56,6 +56,23 @@ export function initTerminal() {
   const clear = document.getElementById('terminal-clear');
   const panel = document.getElementById('terminal-panel');
   const input = document.getElementById('terminal-input');
+
+  // Hide console by default — Shift+L to toggle
+  if (panel) {
+    panel.classList.add('hidden');
+
+    document.addEventListener('keydown', (e) => {
+      if (e.shiftKey && e.key === 'L') {
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) {
+          panel.classList.remove('collapsed');
+          if (toggle) toggle.textContent = '▾';
+          if (input) input.focus();
+          log('Console opened (Shift+L to close)', 'info');
+        }
+      }
+    });
+  }
   const resizer = document.getElementById('terminal-resizer');
 
   if (resizer && panel) {

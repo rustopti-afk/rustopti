@@ -108,6 +108,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       downloadSection.style.display = 'none';
   }
 
+  // Advanced section toggle
+  const advToggle = document.getElementById('nav-advanced-toggle');
+  const advItems = document.getElementById('nav-advanced-items');
+  if (advToggle && advItems) {
+    advToggle.addEventListener('click', () => {
+      advToggle.classList.toggle('open');
+      advItems.classList.toggle('open');
+    });
+  }
+
   initKeybinds();
   log('RustOpti Engine started.', 'success');
   logInfo('Initializing system telemetry...');
