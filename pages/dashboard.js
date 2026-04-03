@@ -156,6 +156,9 @@ export async function renderDashboard(container) {
     logInfo('Starting full optimization...');
     btn.textContent = '⏳ Working...';
 
+    // Force browser to repaint before starting heavy work
+    await new Promise(r => setTimeout(r, 50));
+
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       const pct = Math.round(((i) / steps.length) * 100);
@@ -167,8 +170,8 @@ export async function renderDashboard(container) {
 
       logInfo(`[${i + 1}/${steps.length}] ${step.label}`);
 
-      // Give UI time to repaint
-      await new Promise(r => requestAnimationFrame(r));
+      // Give UI time to repaint before each step
+      await new Promise(r => setTimeout(r, 16));
 
       try {
         const results = await step.fn();

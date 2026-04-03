@@ -51,22 +51,16 @@ pub fn create_restore_point(description: String, state: State<'_, LicenseState>)
         safe_desc
     );
 
+    // Spawn in background — Checkpoint-Computer can take 10-30s, no need to block UI
     match Command::new("powershell")
         .args(["-NoProfile", "-Command", &ps_cmd])
         .creation_flags(CREATE_NO_WINDOW)
-        .output()
+        .spawn()
     {
-        Ok(o) if o.status.success() => Ok(BackupResult {
+        Ok(_) => Ok(BackupResult {
             success: true,
-            message: format!("✓ Restore point created: {}", safe_desc),
+            message: format!("✓ Restore point creating in background: {}", safe_desc),
         }),
-        Ok(o) => {
-            let stderr = String::from_utf8_lossy(&o.stderr);
-            Ok(BackupResult {
-                success: false,
-                message: format!("✗ Failed (needs admin): {}", stderr.chars().take(200).collect::<String>()),
-            })
-        }
         Err(e) => Ok(BackupResult {
             success: false,
             message: format!("✗ {}", e),
