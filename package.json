@@ -1,0 +1,22 @@
+{
+  "name": "rustopti",
+  "version": "2.2.2",
+  "author": "RustOpti Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brobots-school-ua/rustopti.git"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "vite": "^6"
+  }
+}
