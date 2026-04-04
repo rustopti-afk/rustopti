@@ -741,7 +741,7 @@ input:checked + .slider:before { transform: translateX(18px); background: #fff; 
   color: var(--text-main);
   font-size: 13px;
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgba(157, 94, 245, 0.25);
+  box-shadow: 0 4px 24px rgba(255, 255, 255, 0.15);
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.25s ease, transform 0.25s ease;
@@ -869,11 +869,11 @@ input:checked + .slider:before { transform: translateX(18px); background: #fff; 
   letter-spacing: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 0 30px rgba(157, 94, 245, 0.35);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
 }
 .btn-optimize:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 45px rgba(157, 94, 245, 0.55);
+  box-shadow: 0 0 45px rgba(255, 255, 255, 0.35);
 }
 .btn-optimize:active { transform: translateY(0); }
 .btn-optimize:disabled {
