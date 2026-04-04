@@ -977,6 +977,48 @@ input:checked + .slider:before { transform: translateX(18px); background: #fff; 
 .tweak-dot.instant { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); }
 .tweak-dot.reboot  { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
 
+/* ── Tweak Info Tooltip ── */
+.tweak-info {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: default;
+  position: relative;
+}
+.tweak-info:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.tweak-info::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-2);
+  width: 220px;
+  line-height: 1.5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+  white-space: normal;
+}
+.tweak-info:hover::after { opacity: 1; }
+
 /* ── Update Banner ── */
 #update-banner {
   position: fixed;

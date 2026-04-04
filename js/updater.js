@@ -1,8 +1,8 @@
-const CURRENT_VERSION = '2.2.6';
+const CURRENT_VERSION = '2.2.8';
 const RELEASES_API = 'https://api.github.com/repos/rustopti-afk/rustopti/releases/latest';
 
 export async function checkForUpdates(silent = false) {
-  if (!window.__TAURI_INTERNALS__) return; // only in desktop app
+  if (!window.__TAURI_INTERNALS__) return;
 
   try {
     const res = await fetch(RELEASES_API);
@@ -33,6 +33,17 @@ function isNewer(latest, current) {
   return false;
 }
 
+async function openUrl(url) {
+  try {
+    // Tauri v2 shell plugin
+    const { open } = await import('@tauri-apps/plugin-shell');
+    await open(url);
+  } catch {
+    // fallback
+    window.open(url, '_blank');
+  }
+}
+
 function showUpdateBanner(version, downloadUrl) {
   document.getElementById('update-banner')?.remove();
 
@@ -53,7 +64,7 @@ function showUpdateBanner(version, downloadUrl) {
 
   document.getElementById('dismiss-update-btn').onclick = () => banner.remove();
   document.getElementById('do-update-btn').onclick = () => {
-    if (downloadUrl) window.open(downloadUrl, '_blank');
+    if (downloadUrl) openUrl(downloadUrl);
   };
 }
 

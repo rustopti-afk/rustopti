@@ -6,7 +6,7 @@ const isTauri = () => !!window.__TAURI_INTERNALS__;
 export async function renderActivation(container) {
   container.innerHTML = `
     <div class="activation-page" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px;">
-      <div class="license-card card-enter" style="max-width:450px; width:100%; padding:32px; background:rgba(20,20,30,0.8); border:1px solid var(--accent); border-radius:var(--radius-md); box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);">
+      <div class="license-card card-enter" style="max-width:450px; width:100%; padding:32px; background:rgba(20,20,30,0.8); border:1px solid var(--accent); border-radius:var(--radius-md); box-shadow: 0 0 30px rgba(200, 200, 200, 0.1);">
         <h1 class="neon-pulse" style="font-size:32px; margin-bottom:12px; color:var(--accent)">RustOpti</h1>
         <p style="color:var(--text-dim); margin-bottom:24px;">${t('act.desc')}</p>
 

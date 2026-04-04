@@ -43,7 +43,7 @@ function renderAccountInfo(container, info) {
   // Calculate days remaining
   let daysLeft = null;
   let expiryDisplay = '∞ Назавжди';
-  let expiryColor = '#a855f7';
+  let expiryColor = '#c0c0c0';
   let urgentBar = '';
 
   if (!isLifetime && expiresAt) {
@@ -79,7 +79,7 @@ function renderAccountInfo(container, info) {
   }
 
   const planLabel = isLifetime
-    ? '<span style="color:#a855f7">👑 Lifetime</span>'
+    ? '<span style="color:#c0c0c0">👑 Lifetime</span>'
     : '<span style="color:#60a5fa">⚡ Місячна</span>';
 
   const daysBlock = (!isLifetime && daysLeft !== null) ? `
@@ -118,9 +118,9 @@ function renderAccountInfo(container, info) {
 
         </div>
 
-        <div style="background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);border-radius:8px;padding:12px 16px">
+        <div style="background:rgba(200,200,200,0.05);border:1px solid rgba(200,200,200,0.1);border-radius:8px;padding:12px 16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="color:#a855f7;font-size:14px">✅</span>
+            <span style="color:#c0c0c0;font-size:14px">✅</span>
             <span style="color:var(--text-main);font-size:13px;font-weight:500">Ліцензія активна</span>
           </div>
           <p style="color:var(--text-muted);font-size:12px;margin:0">
@@ -132,13 +132,13 @@ function renderAccountInfo(container, info) {
       ${!isLifetime ? `
       <div class="section" style="margin-top:12px">
         <h3 class="section-title" style="margin-bottom:12px">⬆️ Апгрейд</h3>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);border-radius:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(200,200,200,0.05);border:1px solid rgba(200,200,200,0.1);border-radius:8px">
           <div>
             <div style="color:var(--text-main);font-weight:600;font-size:13px">Lifetime ліцензія</div>
             <div style="color:var(--text-muted);font-size:12px;margin-top:2px">Без терміну дії · Пріоритетна підтримка</div>
           </div>
           <a href="https://rustopti.fun/pricing" target="_blank"
-            style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:12px;font-weight:600;padding:8px 16px;border-radius:6px;text-decoration:none;white-space:nowrap">
+            style="background:linear-gradient(135deg,#7c3aed,#c0c0c0);color:#fff;font-size:12px;font-weight:600;padding:8px 16px;border-radius:6px;text-decoration:none;white-space:nowrap">
             Придбати →
           </a>
         </div>

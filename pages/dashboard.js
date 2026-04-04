@@ -71,26 +71,32 @@ export async function renderDashboard(container) {
           <div class="tweak-item">
             <span class="tweak-dot instant"></span>
             <span>Power Plan — Максимальна продуктивність</span>
+            <span class="tweak-info" data-tip="Перемикає план живлення Windows на Ultimate Performance — процесор завжди працює на максимальній частоті без зниження.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot instant"></span>
             <span>Timer Resolution — 0.5ms</span>
+            <span class="tweak-info" data-tip="Зменшує системний таймер з 15.6ms до 0.5ms — ігровий цикл стає точнішим, фреймтайм стабільнішим. +5-15 FPS.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot instant"></span>
             <span>RAM — очистка пам'яті</span>
+            <span class="tweak-info" data-tip="Очищає standby-пам'ять (кеш Windows що займає RAM). Звільняє до 2-4 ГБ для гри.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot instant"></span>
             <span>Мережа — Nagle, TCP No Delay</span>
+            <span class="tweak-info" data-tip="Вимикає алгоритм Nagle — пакети надсилаються одразу без буферизації. Зменшує пінг на 5-20ms.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot instant"></span>
             <span>CPU — розпарковка ядер</span>
+            <span class="tweak-info" data-tip="Забороняє Windows вимикати ядра процесора в режимі економії. Всі ядра завжди активні.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot instant"></span>
             <span>Реєстр — Game DVR, GPU Priority</span>
+            <span class="tweak-info" data-tip="Вимикає Xbox Game DVR (фонове записування), підвищує пріоритет GPU в реєстрі. +3-5 FPS.">!</span>
           </div>
         </div>
       </div>
@@ -103,10 +109,12 @@ export async function renderDashboard(container) {
           <div class="tweak-item">
             <span class="tweak-dot reboot"></span>
             <span>MSI Mode — зменшення input lag GPU</span>
+            <span class="tweak-info" data-tip="Message Signaled Interrupts — GPU надсилає переривання через RAM замість шини PCI. Зменшує input lag на 2-5ms. Потрібне перезавантаження.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot reboot"></span>
             <span>HPET — вимкнення (+5-10 FPS на AMD)</span>
+            <span class="tweak-info" data-tip="High Precision Event Timer — на AMD процесорах його вимкнення дає +5-10 FPS. На Intel ефект менший. Потрібне перезавантаження.">!</span>
           </div>
           <div class="tweak-item">
             <span class="tweak-dot reboot"></span>

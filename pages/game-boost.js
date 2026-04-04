@@ -25,7 +25,7 @@ export async function renderGameBoost(container) {
     </div>
 
     <!-- Game Mode (one-click) -->
-    <div class="section" style="background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(0,0,0,0)); border-color: var(--accent-primary)">
+    <div class="section" style="background: linear-gradient(135deg, rgba(200,200,200,0.05), rgba(0,0,0,0)); border-color: var(--accent-primary)">
       <h3 class="section-title">🎮 Game Mode — One Click Boost</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
         Start Rust first, then activate. Kills bloatware, sets High priority, pins to fast CPU cores, clears RAM.
