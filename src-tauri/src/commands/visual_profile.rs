@@ -101,8 +101,14 @@ fn apply_nvidia_color_profile() -> VisualProfileResult {
 }
 
 fn apply_gamma_ramp(brightness: u8, contrast: u8, gamma: f64) -> bool {
-    use windows::Win32::Graphics::Gdi::{GetDC, SetDeviceGammaRamp, ReleaseDC};
+    use windows::Win32::Graphics::Gdi::{GetDC, ReleaseDC};
     use windows::Win32::Foundation::HWND;
+
+    // SetDeviceGammaRamp via raw extern (not exposed in windows crate v0.58 directly)
+    #[link(name = "gdi32")]
+    extern "system" {
+        fn SetDeviceGammaRamp(hdc: *mut std::ffi::c_void, lpramp: *const u16) -> i32;
+    }
 
     unsafe {
         let hdc = GetDC(HWND(std::ptr::null_mut()));
@@ -114,9 +120,7 @@ fn apply_gamma_ramp(brightness: u8, contrast: u8, gamma: f64) -> bool {
 
         for i in 0usize..256 {
             let normalized = i as f64 / 255.0;
-            // Apply gamma
             let g = normalized.powf(1.0 / gamma);
-            // Apply brightness and contrast
             let val = ((g * c + (b - 0.5) * (1.0 - c) + 0.5) * 65535.0)
                 .max(0.0)
                 .min(65535.0) as u16;
@@ -125,7 +129,7 @@ fn apply_gamma_ramp(brightness: u8, contrast: u8, gamma: f64) -> bool {
             ramp[i + 512] = val;
         }
 
-        let ok = SetDeviceGammaRamp(hdc, ramp.as_ptr() as *const _).as_bool();
+        let ok = SetDeviceGammaRamp(hdc.0 as *mut _, ramp.as_ptr()) != 0;
         ReleaseDC(HWND(std::ptr::null_mut()), hdc);
         ok
     }
