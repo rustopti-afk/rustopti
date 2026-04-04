@@ -116,6 +116,26 @@ export async function renderDashboard(container) {
       </div>
     </div>
 
+    <!-- GPU Upscaling Card -->
+    <div class="upscaling-card" id="upscaling-card" style="display:none">
+      <div class="upscaling-header">
+        <span class="upscaling-icon">⬆</span>
+        <div>
+          <div class="upscaling-title" id="upscaling-tech">Завантаження...</div>
+          <div class="upscaling-sub">Апскейлінг на рівні драйвера — працює в усіх іграх</div>
+        </div>
+        <label class="toggle-switch" style="margin-left:auto">
+          <input type="checkbox" id="upscaling-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="upscaling-sharpness">
+        <span class="upscaling-sharp-label">Різкість: <b id="upscaling-sharp-val">50</b>%</span>
+        <input type="range" id="upscaling-sharpness" min="0" max="100" value="50" class="sharp-slider">
+      </div>
+      <div class="upscaling-note" id="upscaling-note"></div>
+    </div>
+
     <!-- Web download banner -->
     <div id="web-hero-banner" style="display:none; background: linear-gradient(135deg, rgba(77, 255, 145, 0.1) 0%, rgba(0, 0, 0, 0) 100%); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); padding: 24px; margin-top: 24px; position: relative; overflow: hidden;">
         <div style="position:relative; z-index:2;">
@@ -132,6 +152,47 @@ export async function renderDashboard(container) {
   if (!window.__TAURI_INTERNALS__) {
       const hero = document.getElementById('web-hero-banner');
       if (hero) hero.style.display = 'block';
+  }
+
+  // GPU Upscaling Card (only in Tauri)
+  if (window.__TAURI_INTERNALS__) {
+    try {
+      const ups = await api.getUpscalingStatus();
+      if (ups.vendor === 'NVIDIA' || ups.vendor === 'AMD') {
+        const card = document.getElementById('upscaling-card');
+        card.style.display = 'block';
+        document.getElementById('upscaling-tech').textContent = ups.technology;
+        const toggle = document.getElementById('upscaling-toggle');
+        const sharpSlider = document.getElementById('upscaling-sharpness');
+        const sharpVal = document.getElementById('upscaling-sharp-val');
+        const note = document.getElementById('upscaling-note');
+        toggle.checked = ups.enabled;
+        sharpSlider.value = ups.sharpness;
+        sharpVal.textContent = ups.sharpness;
+
+        toggle.addEventListener('change', async () => {
+          try {
+            const msg = await api.setUpscaling(toggle.checked, parseInt(sharpSlider.value));
+            note.textContent = '✓ ' + msg;
+            note.style.color = 'var(--accent-primary)';
+          } catch(e) {
+            note.textContent = '✗ ' + e;
+            note.style.color = '#f87171';
+          }
+        });
+
+        sharpSlider.addEventListener('input', () => {
+          sharpVal.textContent = sharpSlider.value;
+        });
+        sharpSlider.addEventListener('change', async () => {
+          try {
+            const msg = await api.setUpscaling(toggle.checked, parseInt(sharpSlider.value));
+            note.textContent = '✓ ' + msg;
+            note.style.color = 'var(--accent-primary)';
+          } catch(e) {}
+        });
+      }
+    } catch(e) { /* GPU upscaling not available */ }
   }
 
   try {

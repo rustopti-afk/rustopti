@@ -313,3 +313,7 @@ export const validateLicenseKey = async (key) => {
 export const launchService = () => invoke('launch_service');
 
 
+
+export const getUpscalingStatus = () => invoke("get_upscaling_status");
+export const setUpscaling = (enabled, sharpness) => invoke("set_upscaling", { enabled, sharpness });
+

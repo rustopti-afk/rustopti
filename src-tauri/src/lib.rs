@@ -28,6 +28,8 @@ pub fn run() {
             // GPU
             gpu::detect_gpu_vendor,
             gpu::apply_gpu_tweaks,
+            gpu::get_upscaling_status,
+            gpu::set_upscaling,
             // Power
             power::get_power_plans,
             power::apply_power_tweaks,

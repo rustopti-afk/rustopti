@@ -125,6 +125,19 @@ pub fn apply_gpu_tweaks(state: State<'_, LicenseState>) -> Result<Vec<GpuTweakRe
                 r"SOFTWARE\NVIDIA Corporation\Global\NVTweak",
                 "PreRenderedFrames", 1,
             ));
+
+            // NVIDIA Image Scaling (NIS) — driver-level upscaling for all games
+            results.push(apply_nvidia_registry_tweak(
+                "NVIDIA Image Scaling (NIS) → Enabled",
+                r"SOFTWARE\NVIDIA Corporation\Global\NVTweak",
+                "NvidiaImageScalingEnable", 1,
+            ));
+            // NIS sharpness: 50% (range 0–100, stored as 0–100)
+            results.push(apply_nvidia_registry_tweak(
+                "NIS Sharpness → 50%",
+                r"SOFTWARE\NVIDIA Corporation\Global\NVTweak",
+                "NvidiaImageScalingSharpness", 50,
+            ));
         }
         "AMD" => {
             results.push(GpuTweakResult {
@@ -142,6 +155,9 @@ pub fn apply_gpu_tweaks(state: State<'_, LicenseState>) -> Result<Vec<GpuTweakRe
                 success: true,
                 message: "→ Set GPU Workload → Graphics mode".to_string(),
             });
+
+            // AMD Radeon Super Resolution (RSR) — driver-level upscaling for all games
+            results.push(apply_amd_rsr_tweak());
         }
         _ => {
             results.push(GpuTweakResult {
@@ -153,6 +169,118 @@ pub fn apply_gpu_tweaks(state: State<'_, LicenseState>) -> Result<Vec<GpuTweakRe
     }
 
     Ok(results)
+}
+
+fn apply_amd_rsr_tweak() -> GpuTweakResult {
+    use crate::utils::registry_helper;
+    use winreg::enums::*;
+
+    // AMD RSR stored under HKCU in AMD's driver key
+    let subkey = r"SOFTWARE\AMD\CN";
+    let results = [
+        ("RSREnabled", 1u32),
+        ("RSRSharpness", 50u32), // 0–100
+    ];
+
+    let mut all_ok = true;
+    for (name, val) in &results {
+        if registry_helper::set_dword(HKEY_CURRENT_USER, subkey, name, *val).is_err() {
+            all_ok = false;
+        }
+    }
+
+    if all_ok {
+        GpuTweakResult {
+            name: "AMD RSR (Radeon Super Resolution) → Enabled".to_string(),
+            success: true,
+            message: "✓ RSR ввімкнено, різкість 50%".to_string(),
+        }
+    } else {
+        GpuTweakResult {
+            name: "AMD RSR → Failed".to_string(),
+            success: false,
+            message: "✗ Не вдалось записати RSR registry. Можливо AMD Software не встановлено".to_string(),
+        }
+    }
+}
+
+#[tauri::command]
+pub fn get_upscaling_status() -> Result<serde_json::Value, String> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let vendor = detect_gpu_vendor().unwrap_or("Unknown".to_string());
+
+    match vendor.as_str() {
+        "NVIDIA" => {
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let key = hklm.open_subkey(r"SOFTWARE\NVIDIA Corporation\Global\NVTweak");
+            let enabled: u32 = key.as_ref().ok()
+                .and_then(|k| k.get_value("NvidiaImageScalingEnable").ok())
+                .unwrap_or(0);
+            let sharpness: u32 = key.as_ref().ok()
+                .and_then(|k| k.get_value("NvidiaImageScalingSharpness").ok())
+                .unwrap_or(50);
+            Ok(serde_json::json!({
+                "vendor": "NVIDIA",
+                "technology": "NIS (NVIDIA Image Scaling)",
+                "enabled": enabled == 1,
+                "sharpness": sharpness,
+            }))
+        }
+        "AMD" => {
+            let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+            let key = hkcu.open_subkey(r"SOFTWARE\AMD\CN");
+            let enabled: u32 = key.as_ref().ok()
+                .and_then(|k| k.get_value("RSREnabled").ok())
+                .unwrap_or(0);
+            let sharpness: u32 = key.as_ref().ok()
+                .and_then(|k| k.get_value("RSRSharpness").ok())
+                .unwrap_or(50);
+            Ok(serde_json::json!({
+                "vendor": "AMD",
+                "technology": "RSR (Radeon Super Resolution)",
+                "enabled": enabled == 1,
+                "sharpness": sharpness,
+            }))
+        }
+        _ => Ok(serde_json::json!({
+            "vendor": vendor,
+            "technology": "Not available",
+            "enabled": false,
+            "sharpness": 0,
+        }))
+    }
+}
+
+#[tauri::command]
+pub fn set_upscaling(enabled: bool, sharpness: u32, state: State<'_, LicenseState>) -> Result<String, String> {
+    require_license(&state)?;
+    use crate::utils::registry_helper;
+    use winreg::enums::*;
+
+    let vendor = detect_gpu_vendor().unwrap_or("Unknown".to_string());
+    let sharpness = sharpness.clamp(0, 100);
+
+    match vendor.as_str() {
+        "NVIDIA" => {
+            let subkey = r"SOFTWARE\NVIDIA Corporation\Global\NVTweak";
+            registry_helper::set_dword(HKEY_LOCAL_MACHINE, subkey, "NvidiaImageScalingEnable", enabled as u32)
+                .map_err(|e| e.to_string())?;
+            registry_helper::set_dword(HKEY_LOCAL_MACHINE, subkey, "NvidiaImageScalingSharpness", sharpness)
+                .map_err(|e| e.to_string())?;
+            Ok(format!("NIS {} (різкість {}%)", if enabled { "ввімкнено" } else { "вимкнено" }, sharpness))
+        }
+        "AMD" => {
+            let subkey = r"SOFTWARE\AMD\CN";
+            registry_helper::set_dword(HKEY_CURRENT_USER, subkey, "RSREnabled", enabled as u32)
+                .map_err(|e| e.to_string())?;
+            registry_helper::set_dword(HKEY_CURRENT_USER, subkey, "RSRSharpness", sharpness)
+                .map_err(|e| e.to_string())?;
+            Ok(format!("RSR {} (різкість {}%)", if enabled { "ввімкнено" } else { "вимкнено" }, sharpness))
+        }
+        _ => Err("GPU не підтримується (тільки NVIDIA та AMD)".to_string())
+    }
 }
 
 fn apply_nvidia_tweak(name: &str, cmd: &str, args: &[&str]) -> GpuTweakResult {
