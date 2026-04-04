@@ -1,6 +1,6 @@
 {
   "productName": "RustOpti",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "identifier": "com.rustopti.app",
   "build": {
     "frontendDist": "../dist",
@@ -21,14 +21,6 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https:"
-    }
-  },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU5NDBDREU5MTg0MDM5MTAKUldRUU9VQVk2YzFBNmIyZllTZlRaWlpwSnZZOGhKdjQ0MlFNR3NaWWhMYmdYK2dpZElkMks4VWgK",
-      "endpoints": [
-        "https://github.com/rustopti-afk/rustopti/releases/latest/download/latest.json"
-      ]
     }
   },
   "bundle": {

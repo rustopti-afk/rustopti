@@ -1,22 +1,39 @@
-import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
+const CURRENT_VERSION = '2.2.6';
+const RELEASES_API = 'https://api.github.com/repos/rustopti-afk/rustopti/releases/latest';
 
 export async function checkForUpdates(silent = false) {
-  try {
-    const update = await check();
-    if (!update) {
-      if (!silent) showToast('Оновлень немає — у тебе остання версія', 'info');
-      return;
-    }
+  if (!window.__TAURI_INTERNALS__) return; // only in desktop app
 
-    showUpdateBanner(update);
-  } catch (e) {
+  try {
+    const res = await fetch(RELEASES_API);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const latest = data.tag_name?.replace('v', '');
+    if (!latest) return;
+
+    if (isNewer(latest, CURRENT_VERSION)) {
+      const exeAsset = data.assets?.find(a => a.name.endsWith('-setup.exe'));
+      showUpdateBanner(latest, exeAsset?.browser_download_url);
+    } else if (!silent) {
+      showToast('У тебе остання версія', 'info');
+    }
+  } catch {
     if (!silent) showToast('Не вдалось перевірити оновлення', 'error');
   }
 }
 
-function showUpdateBanner(update) {
-  // Remove existing banner if any
+function isNewer(latest, current) {
+  const a = latest.split('.').map(Number);
+  const b = current.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((a[i] || 0) > (b[i] || 0)) return true;
+    if ((a[i] || 0) < (b[i] || 0)) return false;
+  }
+  return false;
+}
+
+function showUpdateBanner(version, downloadUrl) {
   document.getElementById('update-banner')?.remove();
 
   const banner = document.createElement('div');
@@ -25,53 +42,23 @@ function showUpdateBanner(update) {
     <div class="update-banner-content">
       <span class="update-icon">⬆</span>
       <div>
-        <div class="update-title">Доступне оновлення v${update.version}</div>
-        <div class="update-notes">${update.body || ''}</div>
+        <div class="update-title">Доступне оновлення v${version}</div>
+        <div class="update-notes">Натисни щоб завантажити нову версію</div>
       </div>
-      <button class="update-btn" id="do-update-btn">Встановити</button>
+      <button class="update-btn" id="do-update-btn">Завантажити</button>
       <button class="update-dismiss" id="dismiss-update-btn">✕</button>
-    </div>
-    <div class="update-progress" id="update-progress" style="display:none">
-      <div class="update-progress-bar" id="update-progress-bar"></div>
-      <span id="update-progress-label">Завантаження...</span>
     </div>
   `;
   document.body.appendChild(banner);
 
   document.getElementById('dismiss-update-btn').onclick = () => banner.remove();
-  document.getElementById('do-update-btn').onclick = () => installUpdate(update, banner);
-}
-
-async function installUpdate(update, banner) {
-  const btn = document.getElementById('do-update-btn');
-  const progress = document.getElementById('update-progress');
-  const bar = document.getElementById('update-progress-bar');
-  const label = document.getElementById('update-progress-label');
-
-  btn.disabled = true;
-  progress.style.display = 'block';
-
-  let downloaded = 0;
-  let total = 0;
-
-  await update.downloadAndInstall((event) => {
-    if (event.event === 'Started') {
-      total = event.data.contentLength || 0;
-      label.textContent = 'Завантаження...';
-    } else if (event.event === 'Progress') {
-      downloaded += event.data.chunkLength;
-      if (total > 0) {
-        const pct = Math.round((downloaded / total) * 100);
-        bar.style.width = pct + '%';
-        label.textContent = `${pct}%`;
-      }
-    } else if (event.event === 'Finished') {
-      label.textContent = 'Встановлення...';
+  document.getElementById('do-update-btn').onclick = () => {
+    if (downloadUrl) {
+      window.__TAURI_INTERNALS__
+        ? import('@tauri-apps/plugin-shell').then(m => m.open(downloadUrl)).catch(() => window.open(downloadUrl))
+        : window.open(downloadUrl);
     }
-  });
-
-  label.textContent = 'Готово! Перезапуск...';
-  setTimeout(() => relaunch(), 1500);
+  };
 }
 
 function showToast(msg, type = 'info') {
