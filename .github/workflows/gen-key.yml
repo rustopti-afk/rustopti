@@ -1,0 +1,39 @@
+name: Generate Signing Key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  secrets: write
+
+jobs:
+  generate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate signing key
+        shell: cmd
+        run: |
+          echo. | npx @tauri-apps/cli signer generate -w tauri-signing.key
+          echo === PUBLIC KEY ===
+          type tauri-signing.key.pub
+          echo === PRIVATE KEY (base64) ===
+          certutil -encode tauri-signing.key tauri-signing.key.b64
+          type tauri-signing.key.b64
+
+      - name: Upload public key as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-keys
+          path: |
+            tauri-signing.key.pub
+            tauri-signing.key.b64
