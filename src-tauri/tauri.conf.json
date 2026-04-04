@@ -23,14 +23,6 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https:"
     }
   },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZDQzhDRDBFQjlBMjQwMTIKUldRU1FLSzVEczNJYk04QUZpVUdVcWszY0ppZTdhVWsySE1aSjJTNEtTU0FZNjJGMFMrRkZXNUMK",
-      "endpoints": [
-        "https://github.com/BENDE4a/rustopti/releases/latest/download/latest.json"
-      ]
-    }
-  },
   "bundle": {
     "active": true,
     "targets": "all",
