@@ -78,10 +78,23 @@ export async function renderProcess(container) {
   });
 }
 
+const PROTECTED = new Set([
+  'system', 'idle', 'registry', 'smss.exe', 'csrss.exe', 'wininit.exe',
+  'winlogon.exe', 'lsass.exe', 'services.exe', 'svchost.exe', 'dwm.exe',
+  'explorer.exe', 'audiodg.exe', 'spoolsv.exe', 'fontdrvhost.exe',
+  'taskhostw.exe', 'sihost.exe', 'ctfmon.exe', 'runtimebroker.exe',
+  'securityhealthservice.exe', 'wmiprvse.exe', 'wudfhost.exe',
+  'msdtc.exe', 'lsm.exe', 'ntoskrnl.exe', 'hal.dll', 'conhost.exe',
+  'dllhost.exe', 'searchindexer.exe', 'sppsvc.exe', 'msiexec.exe',
+  'wlanext.exe', 'unsecapp.exe', 'taskmgr.exe', 'rustopti.exe',
+]);
+
 async function loadProcesses() {
   try {
-    const procs = await api.getProcessList();
-    const rustProc = procs.find(p => p.name.toLowerCase().includes('rust'));
+    const allProcs = await api.getProcessList();
+    const procs = allProcs.filter(p => !PROTECTED.has(p.name.toLowerCase()));
+
+    const rustProc = allProcs.find(p => p.name.toLowerCase().includes('rust') && p.name.toLowerCase() !== 'rustopti.exe');
     const rustStatus = document.getElementById('rust-status');
     if (rustStatus) {
       rustStatus.textContent = rustProc ? `${t('proc.running')} (${rustProc.pid})` : t('proc.not_running');
