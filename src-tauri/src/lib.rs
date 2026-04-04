@@ -14,6 +14,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         // License state lives in Rust memory — frontend cannot tamper with it
         .manage(LicenseState::new())
         .invoke_handler(tauri::generate_handler![

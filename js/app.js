@@ -4,6 +4,7 @@ import * as api from './api.js';
 import { initI18n, setLocale, getCurrentLocale } from './i18n.js';
 import { initKeybinds } from './keybinds.js';
 import { showWarning } from './toast.js';
+import { checkForUpdates } from './updater.js';
 
 let statsInterval = null;
 let lastOverheatWarning = 0;
@@ -93,6 +94,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   initI18n();
   initTerminal();
   initRouter();
+
+  // Check for updates silently on startup (no popup if up to date)
+  setTimeout(() => checkForUpdates(true), 3000);
 
   const langSelect = document.getElementById('lang-select');
   if (langSelect) {

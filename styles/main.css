@@ -976,3 +976,70 @@ input:checked + .slider:before { transform: translateX(18px); background: #fff; 
 }
 .tweak-dot.instant { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); }
 .tweak-dot.reboot  { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+
+/* ── Update Banner ── */
+#update-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: rgba(20, 20, 30, 0.97);
+  border: 1px solid rgba(157, 94, 245, 0.4);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  z-index: 9999;
+  min-width: 320px;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.update-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.update-icon { font-size: 20px; }
+.update-title { font-size: 14px; font-weight: 600; color: var(--accent-primary); }
+.update-notes { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.update-btn {
+  margin-left: auto;
+  padding: 8px 16px;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.update-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.update-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 0 0 8px;
+  flex-shrink: 0;
+}
+.update-progress {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.update-progress-bar-wrap {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-hover);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.update-progress-bar {
+  height: 4px;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.2s;
+}
+#update-progress-label { font-size: 11px; color: var(--text-muted); }

@@ -121,7 +121,7 @@ export async function renderDashboard(container) {
         <div style="position:relative; z-index:2;">
             <h3 style="color:var(--accent-primary); margin-bottom:8px; font-size:18px;">🚀 Завантаж десктоп додаток</h3>
             <p style="color:var(--text-main); margin-bottom:16px; max-width:600px; font-size:13px;">Веб-версія — тільки демо. Завантаж програму щоб отримати реальний буст FPS.</p>
-            <a href="https://rustopti.fun/RustOpti_2.2.2_x64-setup.exe" class="btn btn-primary btn-ripple" style="padding:10px 20px; font-weight:600; font-size:13px;">
+            <a href="https://rustopti.fun/RustOpti_2.2.3_x64-setup.exe" class="btn btn-primary btn-ripple" style="padding:10px 20px; font-weight:600; font-size:13px;">
                 ↓ Завантажити .EXE — v2.2.2
             </a>
         </div>
