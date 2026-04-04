@@ -111,6 +111,9 @@ pub fn run() {
             licensing::get_license_info,
             // HWID
             utils::hwid::get_hwid,
+            // Visual Profile
+            visual_profile::apply_visual_profile,
+            visual_profile::get_visual_profile_status,
             // Background service
             service::launch_service,
         ])
