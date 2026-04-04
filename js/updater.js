@@ -53,11 +53,7 @@ function showUpdateBanner(version, downloadUrl) {
 
   document.getElementById('dismiss-update-btn').onclick = () => banner.remove();
   document.getElementById('do-update-btn').onclick = () => {
-    if (downloadUrl) {
-      window.__TAURI_INTERNALS__
-        ? import('@tauri-apps/plugin-shell').then(m => m.open(downloadUrl)).catch(() => window.open(downloadUrl))
-        : window.open(downloadUrl);
-    }
+    if (downloadUrl) window.open(downloadUrl, '_blank');
   };
 }
 
