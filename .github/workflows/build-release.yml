@@ -49,6 +49,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: 'RustOpti ${{ github.event.inputs.tag || github.ref_name }}'
@@ -59,4 +61,4 @@ jobs:
             - See commit history for details
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: false
+          includeUpdaterJson: true
