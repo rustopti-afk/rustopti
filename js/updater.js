@@ -1,4 +1,4 @@
-const CURRENT_VERSION = '2.2.9';
+const CURRENT_VERSION = '2.2.10';
 const RELEASES_API = 'https://api.github.com/repos/rustopti-afk/rustopti/releases/latest';
 
 export async function checkForUpdates(silent = false) {
