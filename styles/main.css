@@ -48,6 +48,9 @@
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*:focus { outline: 1px solid rgba(255,255,255,0.15) !important; }
+*:focus:not(:focus-visible) { outline: none !important; box-shadow: none !important; }
+*:focus-visible { outline: 1px solid rgba(255,255,255,0.25) !important; box-shadow: none !important; }
 
 body {
   font-family: var(--font-ui);
@@ -774,7 +777,7 @@ input:checked + .slider:before { transform: translateX(18px); background: #fff; 
   min-width: 48px;
   text-align: center;
 }
-.keybind-badge:hover { background: rgba(157, 94, 245, 0.22); }
+.keybind-badge:hover { background: rgba(200, 200, 200, 0.15); }
 .keybind-badge.listening {
   background: rgba(217, 70, 239, 0.18);
   border-color: var(--accent-hot);
