@@ -20,14 +20,15 @@ jobs:
         run: npm install
 
       - name: Generate signing key
-        shell: cmd
+        shell: pwsh
         run: |
-          echo. | npx @tauri-apps/cli signer generate -w tauri-signing.key
-          echo === PUBLIC KEY ===
-          type tauri-signing.key.pub
-          echo === PRIVATE KEY (base64) ===
-          certutil -encode tauri-signing.key tauri-signing.key.b64
-          type tauri-signing.key.b64
+          $env:TAURI_KEY_PASSWORD = ""
+          echo "" | npx @tauri-apps/cli signer generate -w tauri-signing.key -p ""
+          Write-Host "=== PUBLIC KEY ==="
+          Get-Content tauri-signing.key.pub
+          Write-Host "=== PRIVATE KEY BASE64 ==="
+          $bytes = [System.IO.File]::ReadAllBytes("tauri-signing.key")
+          [System.Convert]::ToBase64String($bytes)
 
       - name: Upload public key as artifact
         uses: actions/upload-artifact@v4
