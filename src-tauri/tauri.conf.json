@@ -32,9 +32,6 @@
     }
   },
   "bundle": {
-    "resources": [
-      "../rustopti-service.exe"
-    ],
     "active": true,
     "targets": "all",
     "icon": [
