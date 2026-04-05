@@ -1,6 +1,6 @@
 {
   "productName": "RustOpti",
-  "version": "2.2.16",
+  "version": "2.2.17",
   "identifier": "com.rustopti.app",
   "build": {
     "frontendDist": "../dist",
@@ -16,7 +16,8 @@
         "width": 1200,
         "height": 800,
         "resizable": true,
-        "decorations": true
+        "decorations": true,
+        "devtools": false
       }
     ],
     "security": {

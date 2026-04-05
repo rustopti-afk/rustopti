@@ -46,7 +46,7 @@ const mockInvoke = async (cmd, args = {}) => {
     case 'validate_license_remote':
       return { success: false, message: "License validation requires the desktop app. Download RustOpti to activate." };
     case 'check_license_status':
-      return true; // Web demo mode — always unlocked
+      return false; // Web mode — no license (forces activation page)
     case 'get_license_cache_status':
       return 'valid';
     case 'revalidate_license':

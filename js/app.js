@@ -6,6 +6,20 @@ import { initKeybinds } from './keybinds.js';
 import { showWarning } from './toast.js';
 import { checkForUpdates } from './updater.js';
 
+// Anti-tamper: freeze the Tauri internals reference so it can't be
+// overwritten from DevTools to force web-mock mode
+(function lockTauriEnv() {
+  if (window.__TAURI_INTERNALS__) {
+    try {
+      Object.defineProperty(window, '__TAURI_INTERNALS__', {
+        value: window.__TAURI_INTERNALS__,
+        writable: false,
+        configurable: false,
+      });
+    } catch (_) {}
+  }
+})();
+
 let statsInterval = null;
 let lastOverheatWarning = 0;
 const OVERHEAT_THRESHOLD = 85; // °C
