@@ -14,6 +14,7 @@ import { renderActivation } from '../pages/activation.js';
 import { renderGameBoost } from '../pages/game-boost.js';
 import { renderAccount } from '../pages/account.js';
 import { renderGameMode } from '../pages/gamemode.js';
+import { renderSmartBoost } from '../pages/smartboost.js';
 import * as api from './api.js';
 
 const routes = {
@@ -29,6 +30,7 @@ const routes = {
   'game-boost': renderGameBoost,
   'account': renderAccount,
   'gamemode': renderGameMode,
+  'smartboost': renderSmartBoost,
   'activation': renderActivation,
 };
 

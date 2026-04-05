@@ -1,6 +1,6 @@
 {
   "productName": "RustOpti",
-  "version": "2.2.13",
+  "version": "2.2.14",
   "identifier": "com.rustopti.app",
   "build": {
     "frontendDist": "../dist",

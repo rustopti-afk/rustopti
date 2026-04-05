@@ -118,6 +118,9 @@ pub fn run() {
             visual_profile::get_visual_profile_status,
             // Background service
             service::launch_service,
+            // Smart Boost
+            smart_boost::smart_analyze,
+            smart_boost::apply_recommendation,
             // Game Mode AI
             game_mode::detect_running_game,
             game_mode::ai_activate_game_mode,

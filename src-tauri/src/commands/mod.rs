@@ -19,3 +19,4 @@ pub mod game_boost;
 pub mod service;
 pub mod visual_profile;
 pub mod game_mode;
+pub mod smart_boost;
