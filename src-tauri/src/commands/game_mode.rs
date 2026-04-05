@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use sysinfo::{System, Pid};
 use tauri::State;
+use crate::utils::license_guard::{LicenseState, require_license};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -149,7 +150,8 @@ fn ensure_tables(conn: &Connection) -> Result<(), String> {
 /// Check if any known game is currently running.
 /// Returns (game_name, pid) or ("", 0) if none found.
 #[tauri::command]
-pub fn detect_running_game() -> (String, u32) {
+pub fn detect_running_game(license: State<'_, LicenseState>) -> Result<(String, u32), String> {
+    require_license(&license)?;
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -157,10 +159,10 @@ pub fn detect_running_game() -> (String, u32) {
         let name = process.name().to_string_lossy().to_string();
         let name_no_ext = name.trim_end_matches(".exe");
         if KNOWN_GAMES.iter().any(|g| g.eq_ignore_ascii_case(name_no_ext)) {
-            return (name_no_ext.to_string(), pid.as_u32());
+            return Ok((name_no_ext.to_string(), pid.as_u32()));
         }
     }
-    (String::new(), 0)
+    Ok((String::new(), 0))
 }
 
 /// Activate Game Mode for a specific game PID.
@@ -170,7 +172,9 @@ pub fn ai_activate_game_mode(
     game_name: String,
     game_pid:  u32,
     state:     State<'_, GameModeState>,
+    license:   State<'_, LicenseState>,
 ) -> Result<GameModeStatus, String> {
+    require_license(&license)?;
     let mut status = state.0.lock().map_err(|e| e.to_string())?;
     if status.active {
         return Err("Game Mode already active".to_string());
@@ -261,7 +265,8 @@ pub fn ai_activate_game_mode(
 
 /// Deactivate Game Mode — record session duration.
 #[tauri::command]
-pub fn ai_deactivate_game_mode(state: State<'_, GameModeState>) -> Result<String, String> {
+pub fn ai_deactivate_game_mode(state: State<'_, GameModeState>, license: State<'_, LicenseState>) -> Result<String, String> {
+    require_license(&license)?;
     let mut status = state.0.lock().map_err(|e| e.to_string())?;
     if !status.active {
         return Ok("Game Mode was not active".to_string());
@@ -293,7 +298,8 @@ pub fn get_game_mode_status(state: State<'_, GameModeState>) -> GameModeStatus {
 
 /// Get all game profiles from SQLite.
 #[tauri::command]
-pub fn get_game_profiles() -> Result<Vec<GameProfile>, String> {
+pub fn get_game_profiles(license: State<'_, LicenseState>) -> Result<Vec<GameProfile>, String> {
+    require_license(&license)?;
     let conn = open_db()?;
     ensure_tables(&conn)?;
 
@@ -320,7 +326,8 @@ pub fn get_game_profiles() -> Result<Vec<GameProfile>, String> {
 
 /// Get recent session history.
 #[tauri::command]
-pub fn get_game_sessions(limit: i64) -> Result<Vec<SessionRecord>, String> {
+pub fn get_game_sessions(limit: i64, license: State<'_, LicenseState>) -> Result<Vec<SessionRecord>, String> {
+    require_license(&license)?;
     let conn = open_db()?;
     ensure_tables(&conn)?;
 
@@ -350,7 +357,8 @@ pub fn get_game_sessions(limit: i64) -> Result<Vec<SessionRecord>, String> {
 
 /// Add a process to the learned kill list for a game.
 #[tauri::command]
-pub fn add_to_kill_list(game_name: String, proc_name: String) -> Result<String, String> {
+pub fn add_to_kill_list(game_name: String, proc_name: String, license: State<'_, LicenseState>) -> Result<String, String> {
+    require_license(&license)?;
     let conn = open_db()?;
     ensure_tables(&conn)?;
 

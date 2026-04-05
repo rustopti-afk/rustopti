@@ -113,7 +113,7 @@ async function autoDetect() {
       return;
     }
 
-    const [gameName, pid] = await invoke('detect_running_game');
+    const [gameName, pid] = await invoke('detect_running_game').catch(() => ['', 0]);
 
     if (pid && pid !== lastDetectedPid) {
       lastDetectedPid = pid;
@@ -160,7 +160,7 @@ async function scanForGames() {
   const el = document.getElementById('gm-detected');
   el.textContent = 'Сканування...';
   try {
-    const [gameName, pid] = await invoke('detect_running_game');
+    const [gameName, pid] = await invoke('detect_running_game').catch(() => ['', 0]);
     if (pid) {
       el.innerHTML = `<span style="color:var(--success)">✓ Знайдено: ${gameName} (PID ${pid})</span>`;
       logInfo(`Found game: ${gameName} — click Activate or wait for auto-detect`);

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sysinfo::{Disks, System};
+use tauri::State;
+use crate::utils::license_guard::{LicenseState, require_license};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +49,8 @@ pub struct PcSummary {
 // ── Main command ──────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub fn smart_analyze() -> Result<SmartAnalysisResult, String> {
+pub fn smart_analyze(state: State<'_, LicenseState>) -> Result<SmartAnalysisResult, String> {
+    require_license(&state)?;
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -301,7 +304,8 @@ pub fn smart_analyze() -> Result<SmartAnalysisResult, String> {
 
 /// Apply a specific recommendation by its ID.
 #[tauri::command]
-pub fn apply_recommendation(id: String) -> Result<String, String> {
+pub fn apply_recommendation(id: String, state: State<'_, LicenseState>) -> Result<String, String> {
+    require_license(&state)?;
     use std::process::Command;
     use std::os::windows::process::CommandExt;
     const NO_WINDOW: u32 = 0x08000000;
