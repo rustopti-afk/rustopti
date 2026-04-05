@@ -161,7 +161,13 @@ const mockInvoke = async (cmd, args = {}) => {
 
 const invoke = (cmd, args = {}) => {
   if (isTauri()) {
-    return tauriInvoke(cmd, args);
+    return tauriInvoke(cmd, args).catch(err => {
+      // If any command requires a license, redirect to activation page
+      if (typeof err === 'string' && err.includes('License required')) {
+        import('./router.js').then(({ navigateTo }) => navigateTo('activation'));
+      }
+      return Promise.reject(err);
+    });
   } else {
     return mockInvoke(cmd, args);
   }
