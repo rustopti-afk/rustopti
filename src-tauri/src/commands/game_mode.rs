@@ -1,7 +1,8 @@
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use sysinfo::{System, Pid};
+use std::os::windows::process::CommandExt;
+use sysinfo::System;
 use tauri::State;
 use crate::utils::license_guard::{LicenseState, require_license};
 

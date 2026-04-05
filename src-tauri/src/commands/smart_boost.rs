@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sysinfo::{Disks, System};
 use tauri::State;
 use crate::utils::license_guard::{LicenseState, require_license};
