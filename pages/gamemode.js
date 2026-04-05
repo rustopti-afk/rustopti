@@ -30,8 +30,7 @@ export async function renderGameMode(container) {
       </div>
 
       <!-- Active session stats -->
-      <div id="gm-session-stats" style="display:none;margin-top:16px;
-           display:none;gap:16px;flex-wrap:wrap" class="gm-stats-row">
+      <div id="gm-session-stats" style="display:none;margin-top:16px;gap:16px;flex-wrap:wrap" class="gm-stats-row">
         <div class="gm-stat">
           <span class="gm-stat-val" id="gm-killed">0</span>
           <span class="gm-stat-label">процесів вбито</span>
@@ -105,10 +104,24 @@ function startAutoDetect() {
 let lastDetectedPid = 0;
 
 async function autoDetect() {
+  // Self-healing: stop polling if we navigated away from this page
+  if (!document.getElementById('gm-status-card')) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+    if (uptimeTimer) { clearInterval(uptimeTimer); uptimeTimer = null; }
+    return;
+  }
+
   try {
     const status = await invoke('get_game_mode_status');
 
     if (status.active) {
+      // Check if the game process is still alive — auto-deactivate if it exited
+      const [, livePid] = await invoke('detect_running_game').catch(() => ['', 0]);
+      if (!livePid || livePid !== status.current_pid) {
+        await deactivate();
+        return;
+      }
       setActiveUI(status);
       return;
     }
@@ -237,12 +250,12 @@ async function loadProfiles() {
     el.innerHTML = profiles.map(p => `
       <div class="gm-profile-row">
         <div style="flex:1">
-          <span style="color:var(--text-1);font-weight:600">${p.game_name}</span>
+          <span style="color:var(--text-1);font-weight:600">${escHtml(p.game_name)}</span>
           <span style="color:var(--text-3);margin-left:10px;font-size:12px">
-            ${p.session_count} сесій · ${p.last_seen}
+            ${p.session_count} сесій · ${escHtml(p.last_seen)}
           </span>
           ${p.kill_list ? `<div style="color:var(--text-3);font-size:11px;margin-top:2px">
-            Kill list: ${p.kill_list}
+            Kill list: ${escHtml(p.kill_list)}
           </div>` : ''}
         </div>
       </div>
@@ -272,8 +285,8 @@ async function loadSessions() {
         <tbody>
           ${sessions.map(s => `
             <tr>
-              <td style="color:var(--text-1)">${s.game_name}</td>
-              <td>${s.start_time.slice(0,16)}</td>
+              <td style="color:var(--text-1)">${escHtml(s.game_name)}</td>
+              <td>${escHtml(s.start_time.slice(0,16))}</td>
               <td>${formatDuration(s.duration_secs)}</td>
               <td style="color:var(--danger)">${s.processes_killed}</td>
               <td style="color:var(--success)">${s.ram_freed_mb} MB</td>
@@ -285,6 +298,14 @@ async function loadSessions() {
   } catch (e) {
     document.getElementById('gm-sessions-list').textContent = `Помилка: ${e}`;
   }
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function formatDuration(secs) {

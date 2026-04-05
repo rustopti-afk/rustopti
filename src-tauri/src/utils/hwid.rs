@@ -24,26 +24,20 @@ pub fn get_hwid() -> String {
     let combined = format!("{}{}{}", cpuid, baseboard, disk);
     let clean = combined.replace(|c: char| c.is_whitespace(), "");
 
-    // If hardware serials unavailable, use machine-specific fallback:
-    // username + computername — unique per machine, not spoofable easily
-    let fallback_combined = if clean.is_empty() {
+    // If hardware serials unavailable, fall back to username+computername
+    // (unique per machine, prevents shared UNKNOWN-HWID-FALLBACK collision)
+    let seed = if clean.is_empty() {
         let username = std::env::var("USERNAME").unwrap_or_else(|_| "user".to_string());
         let computername = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "pc".to_string());
         format!("FALLBACK-{}-{}", username, computername)
     } else {
-        clean.clone()
+        clean
     };
-    let _ = clean; // suppress warning
-    let clean = fallback_combined;
 
-    if false {
-        "".to_string()
-    } else {
-        let mut hasher = Sha256::new();
-        hasher.update(HWID_SALT.as_bytes());
-        hasher.update(clean.as_bytes());
-        hex::encode(hasher.finalize())
-    }
+    let mut hasher = Sha256::new();
+    hasher.update(HWID_SALT.as_bytes());
+    hasher.update(seed.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 fn get_ps_value(query: &str) -> String {

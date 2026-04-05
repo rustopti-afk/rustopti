@@ -176,9 +176,13 @@ pub fn ai_activate_game_mode(
     license:   State<'_, LicenseState>,
 ) -> Result<GameModeStatus, String> {
     require_license(&license)?;
-    let mut status = state.0.lock().map_err(|e| e.to_string())?;
-    if status.active {
-        return Err("Game Mode already active".to_string());
+
+    // Quick check under mutex, then release before heavy work
+    {
+        let status = state.0.lock().map_err(|e| e.to_string())?;
+        if status.active {
+            return Err("Game Mode already active".to_string());
+        }
     }
 
     let conn = open_db()?;
@@ -200,6 +204,7 @@ pub fn ai_activate_game_mode(
     let mut all_kills: Vec<String> = BACKGROUND_KILLERS.iter().map(|s| s.to_string()).collect();
     all_kills.extend(extra_kills);
 
+    // Heavy work (System::new_all + process killing) done outside mutex
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -245,7 +250,7 @@ pub fn ai_activate_game_mode(
 
     let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    *status = GameModeStatus {
+    let new_status = GameModeStatus {
         active:           true,
         current_game:     game_name.clone(),
         current_pid:      game_pid,
@@ -254,14 +259,23 @@ pub fn ai_activate_game_mode(
         start_time:       now,
     };
 
-    // Log to sessions table (will update duration on deactivate)
+    // Re-acquire mutex to write final status (short critical section)
+    {
+        let mut status = state.0.lock().map_err(|e| e.to_string())?;
+        if status.active {
+            return Err("Game Mode already active".to_string());
+        }
+        *status = new_status.clone();
+    }
+
+    // Log to sessions table (outside mutex)
     conn.execute(
         "INSERT INTO sessions (game_name, start_time, processes_killed, ram_freed_mb, killed_names)
          VALUES (?1, datetime('now'), ?2, ?3, ?4)",
         params![game_name, killed, ram_freed as i64, killed_names.join(", ")],
     ).map_err(|e| e.to_string())?;
 
-    Ok(status.clone())
+    Ok(new_status)
 }
 
 /// Deactivate Game Mode — record session duration.
@@ -276,14 +290,13 @@ pub fn ai_deactivate_game_mode(state: State<'_, GameModeState>, license: State<'
     let conn = open_db()?;
     ensure_tables(&conn)?;
 
-    // Update duration of last session for this game
+    // Update duration of last session for this game (subquery avoids ORDER BY/LIMIT restriction)
     conn.execute(
         "UPDATE sessions SET duration_secs =
             CAST((julianday('now') - julianday(start_time)) * 86400 AS INTEGER)
-         WHERE game_name = ?1 AND duration_secs IS NULL
-         ORDER BY id DESC LIMIT 1",
+         WHERE id = (SELECT id FROM sessions WHERE game_name = ?1 AND duration_secs IS NULL ORDER BY id DESC LIMIT 1)",
         params![status.current_game],
-    ).ok();
+    ).map_err(|e| e.to_string())?;
 
     let game = status.current_game.clone();
     *status = GameModeStatus::default();

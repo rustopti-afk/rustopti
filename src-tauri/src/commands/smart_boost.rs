@@ -67,14 +67,13 @@ pub fn smart_analyze(state: State<'_, LicenseState>) -> Result<SmartAnalysisResu
     let gpu_name = get_gpu_name();
     let gpu_vendor = detect_gpu_vendor(&gpu_name);
 
-    let has_ssd = disks.iter().any(|d| {
-        // sysinfo marks SSD via is_removable=false + kind; approximate via name
-        let name = d.name().to_string_lossy().to_lowercase();
-        !name.contains("hdd") && d.total_space() > 0
-    });
+    use sysinfo::DiskKind;
+    let has_ssd = disks.iter().any(|d| matches!(d.kind(), DiskKind::SSD));
 
     let os_ver  = System::os_version().unwrap_or_default();
-    let is_win11 = os_ver.contains("11") || os_ver.starts_with("22") || os_ver.starts_with("23");
+    // os_version() returns "10.0.22621" format — check build number >= 22000 for Win11
+    let build: u32 = os_ver.split('.').nth(2).and_then(|b| b.parse().ok()).unwrap_or(0);
+    let is_win11 = build >= 22000;
 
     let ram_pressure = match ram_usage {
         u if u > 0.85 => "high",
@@ -284,11 +283,11 @@ pub fn smart_analyze(state: State<'_, LicenseState>) -> Result<SmartAnalysisResu
     // ── Calculate score ──────────────────────────────────────────────
     // Score = 100 - (penalty per unresolved critical/high recommendation)
     let penalty: u8 = recs.iter().map(|r| match r.priority {
-        Priority::Critical => 15,
-        Priority::High     => 8,
-        Priority::Medium   => 3,
-        Priority::Low      => 1,
-    }).sum::<u8>().min(100);
+        Priority::Critical => 15u32,
+        Priority::High     => 8u32,
+        Priority::Medium   => 3u32,
+        Priority::Low      => 1u32,
+    }).sum::<u32>().min(100) as u8;
     let score = 100u8.saturating_sub(penalty);
 
     // Sort: Critical first, then High, Medium, Low
@@ -320,9 +319,13 @@ pub fn apply_recommendation(id: String, state: State<'_, LicenseState>) -> Resul
 
     match id.as_str() {
         "ram_optimize" => {
-            // Empty working sets of all processes
-            ps("Get-Process | ForEach-Object { try { [System.Runtime.InteropServices.Marshal]::FreeHGlobal([System.IntPtr]::Zero) } catch {} }")?;
-            Ok("RAM optimized — standby list cleared".into())
+            // Empty working sets of all processes via EmptyWorkingSet Win32 API
+            ps("
+                $code = '[DllImport(\"psapi.dll\")] public static extern bool EmptyWorkingSet(IntPtr hProcess);';
+                $t = Add-Type -MemberDefinition $code -Name 'EWS' -Namespace WinAPI -PassThru;
+                Get-Process | ForEach-Object { try { $t::EmptyWorkingSet($_.Handle) } catch {} }
+            ")?;
+            Ok("RAM optimized — working sets trimmed".into())
         }
         "kill_background" => {
             let targets = ["OneDrive","Teams","Spotify","SkypeApp","SearchApp",
@@ -342,8 +345,9 @@ pub fn apply_recommendation(id: String, state: State<'_, LicenseState>) -> Resul
             Ok("Timer resolution boosted to 0.5ms".into())
         }
         "power_plan" => {
-            // Enable Ultimate Performance (hidden by default)
-            ps("powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61; $plans = powercfg /L; $guid = ($plans | Select-String 'Ultimate').Line.Split()[3]; powercfg /setactive $guid")?;
+            // Duplicate Ultimate Performance scheme then activate by GUID directly
+            // (avoids Select-String failing on non-English Windows)
+            ps("powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null; powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61")?;
             Ok("Ultimate Performance plan activated".into())
         }
         "disable_indexer" => {
