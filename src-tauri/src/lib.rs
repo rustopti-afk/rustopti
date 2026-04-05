@@ -3,6 +3,7 @@ pub mod utils;
 
 use commands::*;
 use utils::license_guard::LicenseState;
+use commands::game_mode::GameModeState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,6 +18,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         // License state lives in Rust memory — frontend cannot tamper with it
         .manage(LicenseState::new())
+        .manage(GameModeState(std::sync::Mutex::new(game_mode::GameModeStatus::default())))
         .invoke_handler(tauri::generate_handler![
             // System Info
             system_info::get_system_info,
@@ -116,6 +118,15 @@ pub fn run() {
             visual_profile::get_visual_profile_status,
             // Background service
             service::launch_service,
+            // Game Mode AI
+            game_mode::detect_running_game,
+            game_mode::ai_activate_game_mode,
+            game_mode::ai_deactivate_game_mode,
+            game_mode::get_game_mode_status,
+            game_mode::get_game_profiles,
+            game_mode::get_game_sessions,
+            game_mode::add_to_kill_list,
+            game_mode::get_known_games,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

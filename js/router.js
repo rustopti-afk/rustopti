@@ -13,6 +13,7 @@ import { renderDeepTweaks } from '../pages/deep-tweaks.js';
 import { renderActivation } from '../pages/activation.js';
 import { renderGameBoost } from '../pages/game-boost.js';
 import { renderAccount } from '../pages/account.js';
+import { renderGameMode } from '../pages/gamemode.js';
 import * as api from './api.js';
 
 const routes = {
@@ -27,6 +28,7 @@ const routes = {
   'deep-tweaks': renderDeepTweaks,
   'game-boost': renderGameBoost,
   'account': renderAccount,
+  'gamemode': renderGameMode,
   'activation': renderActivation,
 };
 

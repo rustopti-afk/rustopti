@@ -18,3 +18,4 @@ pub mod system_tweaks;
 pub mod game_boost;
 pub mod service;
 pub mod visual_profile;
+pub mod game_mode;
