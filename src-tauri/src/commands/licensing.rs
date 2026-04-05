@@ -269,6 +269,17 @@ pub fn get_license_info(state: State<'_, LicenseState>) -> serde_json::Value {
             "expires_at": expires_at,
             "active": true,
         }),
-        None => json!({ "active": false }),
+        None => {
+            // sub_info is stored in RAM only and resets on restart.
+            // Fall back to the license validity check — if the cached license
+            // was restored successfully the user IS active, just without
+            // fresh plan details (those are refreshed by revalidate_license).
+            let active = is_license_valid(&state);
+            json!({
+                "active": active,
+                "plan": if active { "monthly" } else { "" },
+                "expires_at": null
+            })
+        }
     }
 }

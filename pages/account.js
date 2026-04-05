@@ -12,8 +12,17 @@ export async function renderAccount(container) {
   `;
 
   try {
+    // Load cached info immediately
     const info = await api.getLicenseInfo();
     renderAccountInfo(container, info);
+
+    // Revalidate in background to get fresh plan/expiry from server
+    // (sub_info resets on app restart — this restores it)
+    if (info.active && (!info.expires_at || info.plan === 'monthly')) {
+      api.revalidateLicense().then(() => {
+        api.getLicenseInfo().then(fresh => renderAccountInfo(container, fresh)).catch(() => {});
+      }).catch(() => {});
+    }
   } catch (e) {
     renderAccountInfo(container, { active: false });
   }
