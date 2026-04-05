@@ -102,7 +102,7 @@ async function checkLicense(forceRevalidate = false) {
 // Start periodic license check every 5 minutes
 function startLicenseMonitor() {
   if (!window.__TAURI_INTERNALS__) return;
-  setInterval(checkLicense, 5 * 60 * 1000);
+  setInterval(() => checkLicense(true), 5 * 60 * 1000);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
