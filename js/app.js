@@ -69,13 +69,14 @@ async function initStatusBar() {
 // ═══════════════════════════════════════════════════════════════
 // License revalidation — checks server if cache is stale
 // ═══════════════════════════════════════════════════════════════
-async function checkLicense() {
+async function checkLicense(forceRevalidate = false) {
   if (!window.__TAURI_INTERNALS__) return;
 
   try {
     const cacheStatus = await api.getLicenseCacheStatus();
 
-    if (cacheStatus === 'needs_recheck') {
+    // Always revalidate on startup (forceRevalidate=true) or when cache is stale
+    if (forceRevalidate || cacheStatus === 'needs_recheck') {
       const result = await api.revalidateLicense();
 
       if (result.status === 'expired') {
@@ -86,6 +87,7 @@ async function checkLicense() {
       } else if (result.status === 'valid') {
         log('License verified.', 'success');
       }
+      // If status === 'offline' — server unreachable, keep cached state
     } else if (cacheStatus === 'expired') {
       logError('Підписка закінчилась. Відкочуємо всі зміни...');
       await api.subscriptionExpiredCleanup().catch(() => {});
@@ -143,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initStatusBar();
   log('System monitoring active.', 'success');
 
-  // Check license on startup + every 5 minutes
-  checkLicense();
+  // Force revalidate against server on startup — catches revoked licenses immediately
+  checkLicense(true);
   startLicenseMonitor();
 });
