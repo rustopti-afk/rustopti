@@ -13,20 +13,14 @@ const PRIORITY_LABEL = {
   medium:   'СЕРЕДНІЙ',
   low:      'НИЗЬКИЙ',
 };
-const PRIORITY_ICON = {
-  critical: '🔴',
-  high:     '🟡',
-  medium:   '⚪',
-  low:      '⚫',
-};
 const CATEGORY_ICON = {
-  ram:     '💾',
-  cpu:     '⚡',
-  gpu:     '🎮',
-  disk:    '💿',
-  power:   '🔋',
-  system:  '🖥',
-  process: '🔪',
+  ram:     'RAM',
+  cpu:     'CPU',
+  gpu:     'GPU',
+  disk:    'DISK',
+  power:   'PWR',
+  system:  'SYS',
+  process: 'PROC',
 };
 const IMPACT_LABEL = {
   ram_optimize:       '+5-10 FPS',
@@ -62,7 +56,7 @@ let scanStepTimer = null;
 export async function renderSmartBoost(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 class="page-title neon-pulse">🤖 AI Smart Boost</h2>
+      <h2 class="page-title neon-pulse">AI Smart Boost</h2>
       <p class="page-subtitle">ШІ сканує твій ПК і знаходить всі можливості для +FPS</p>
     </div>
     <div id="sb-root"></div>
@@ -87,7 +81,7 @@ async function runScan() {
     logError(`Smart Boost scan failed: ${e}`);
     document.getElementById('sb-root').innerHTML = `
       <div class="card" style="text-align:center;padding:32px;color:#f87171">
-        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:32px;margin-bottom:12px">[!]</div>
         <div>Помилка сканування: ${e}</div>
         <button class="btn btn-primary btn-ripple" style="margin-top:16px" id="sb-retry">Спробувати знову</button>
       </div>
@@ -109,7 +103,7 @@ function showScanningState() {
             stroke-linecap="round" stroke-dasharray="326" stroke-dashoffset="326"
             class="sb-ring-progress" style="transform-origin:center;transform:rotate(-90deg)"/>
         </svg>
-        <div class="sb-scan-icon">🔍</div>
+        <div class="sb-scan-icon">[SCAN]</div>
       </div>
       <div style="font-size:16px;font-weight:700;color:var(--text-1);margin-top:20px">Сканування ПК...</div>
       <div id="sb-scan-step" style="font-size:13px;color:var(--text-3);margin-top:8px;height:20px;transition:opacity 0.3s">
@@ -184,12 +178,12 @@ function renderResults(result) {
       <div class="card" style="padding:16px">
         <div style="font-size:12px;font-weight:700;color:var(--text-3);letter-spacing:0.05em;margin-bottom:10px">ТВІЙ ПК</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
-          ${summaryRow('CPU', result.pc_summary.cpu_name, '⚡')}
-          ${summaryRow('Ядра', result.pc_summary.cpu_cores, '🔲')}
-          ${summaryRow('RAM', `${result.pc_summary.ram_gb} GB (${ramPressureLabel(result.pc_summary.ram_pressure)})`, '💾')}
-          ${summaryRow('GPU', result.pc_summary.gpu_name, '🎮')}
-          ${summaryRow('Диск', result.pc_summary.has_ssd ? '✅ SSD' : '⚠️ HDD', '💿')}
-          ${summaryRow('ОС', result.pc_summary.os_version, '🖥')}
+          ${summaryRow('CPU', result.pc_summary.cpu_name, '')}
+          ${summaryRow('Ядра', result.pc_summary.cpu_cores, '')}
+          ${summaryRow('RAM', `${result.pc_summary.ram_gb} GB (${ramPressureLabel(result.pc_summary.ram_pressure)})`, '')}
+          ${summaryRow('GPU', result.pc_summary.gpu_name, '')}
+          ${summaryRow('Диск', result.pc_summary.has_ssd ? 'SSD' : 'HDD', '')}
+          ${summaryRow('ОС', result.pc_summary.os_version, '')}
         </div>
       </div>
     </div>
@@ -206,7 +200,7 @@ function renderResults(result) {
         </span>
       </div>
       <button class="btn btn-primary btn-ripple" id="sb-apply-all" style="white-space:nowrap">
-        ⚡ Застосувати все безпечне
+        Застосувати все безпечне
       </button>
     </div>` : ''}
 
@@ -221,7 +215,7 @@ function renderResults(result) {
 
     <!-- Rescan -->
     <div style="text-align:center;margin-top:20px;margin-bottom:8px">
-      <button class="btn btn-ripple" id="sb-rescan">🔄 Сканувати знову</button>
+      <button class="btn btn-ripple" id="sb-rescan">Сканувати знову</button>
     </div>
   `;
 
@@ -254,7 +248,6 @@ function renderPrioritySection(priority, recs) {
   return `
     <div class="sb-priority-section" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span>${PRIORITY_ICON[priority]}</span>
         <span style="font-size:12px;font-weight:700;color:${color};letter-spacing:0.05em">
           ${PRIORITY_LABEL[priority]}
         </span>
@@ -270,7 +263,7 @@ function renderDoneSection(recs) {
   return `
     <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span>✅</span>
+
         <span style="font-size:12px;font-weight:700;color:var(--success);letter-spacing:0.05em">
           ВЖЕ ЗАСТОСОВАНО
         </span>
@@ -288,7 +281,7 @@ function renderRecCard(rec, isApplied = false) {
     <div class="sb-rec-card ${isApplied ? 'sb-rec-done' : ''}" id="rec-${rec.id}">
       <div class="sb-rec-header">
         <div class="sb-rec-left">
-          <span class="sb-rec-icon">${CATEGORY_ICON[rec.category] || '⚙️'}</span>
+          <span class="sb-rec-icon">${CATEGORY_ICON[rec.category] || '[SYS]'}</span>
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="sb-rec-title">${rec.title}</span>
@@ -299,7 +292,7 @@ function renderRecCard(rec, isApplied = false) {
         </div>
         <div class="sb-rec-right">
           ${isApplied
-            ? `<span style="font-size:12px;color:var(--success);font-weight:600">✅ Активно</span>`
+            ? `<span style="font-size:12px;color:var(--success);font-weight:600">Активно</span>`
             : `<button class="btn btn-ripple sb-apply-btn" data-id="${rec.id}" style="font-size:11px;padding:5px 14px">
                 Застосувати
               </button>`
@@ -328,17 +321,17 @@ function summaryRow(label, value, icon) {
 async function applySingle(id, btn) {
   const origText = btn.textContent;
   btn.disabled = true;
-  btn.textContent = '⏳';
+  btn.textContent = '...';
   try {
     const msg = await invoke('apply_recommendation', { id });
     logSuccess(msg);
-    btn.textContent = '✅ Done';
+    btn.textContent = 'Done';
     btn.style.color = 'var(--success)';
     const card = document.getElementById(`rec-${id}`);
     if (card) {
       card.classList.add('sb-rec-done');
       card.querySelector('.sb-rec-right').innerHTML =
-        `<span style="font-size:12px;color:var(--success);font-weight:600">✅ Застосовано</span>`;
+        `<span style="font-size:12px;color:var(--success);font-weight:600">Застосовано</span>`;
     }
     // Update score visually (+points)
     updateScoreAfterApply(id);
@@ -393,14 +386,14 @@ function scoreColor(score) {
 }
 
 function scoreLabel(score) {
-  if (score >= 85) return '✅ ПК добре оптимізований';
-  if (score >= 65) return '⚡ Є простір для покращення';
-  if (score >= 40) return '⚠️ Потребує оптимізації';
-  return '🔴 Критично — оптимізуй зараз';
+  if (score >= 85) return 'ПК добре оптимізований';
+  if (score >= 65) return 'Є простір для покращення';
+  if (score >= 40) return 'Потребує оптимізації';
+  return 'КРИТИЧНО — оптимізуй зараз';
 }
 
 function ramPressureLabel(p) {
-  return p === 'high' ? '🔴 Критично' : p === 'medium' ? '🟡 Помірно' : '🟢 Норма';
+  return p === 'high' ? 'Критично' : p === 'medium' ? 'Помірно' : 'Норма';
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────

@@ -64,7 +64,7 @@ export async function renderDashboard(container) {
     <div class="ai-panel card-enter" id="ai-panel" style="margin-bottom:24px">
       <div class="ai-panel-header">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:18px">🤖</span>
+          <span style="font-size:18px">[AI]</span>
           <div>
             <div style="font-weight:700;font-size:14px;color:var(--text-1)">AI Аналіз ПК</div>
             <div style="font-size:11px;color:var(--text-3)" id="ai-subtitle">Сканування...</div>
@@ -76,7 +76,7 @@ export async function renderDashboard(container) {
             <span style="font-size:12px;color:var(--text-3)">/100</span>
           </div>
           <button class="btn btn-ripple" id="ai-btn-rescan" style="font-size:11px;padding:4px 10px">
-            🔄 Оновити
+            Оновити
           </button>
         </div>
       </div>
@@ -99,7 +99,7 @@ export async function renderDashboard(container) {
       <!-- Apply all -->
       <div id="ai-apply-all-row" style="display:none;margin-top:12px;display:none;justify-content:flex-end">
         <button class="btn btn-primary btn-ripple" id="ai-btn-apply-all" style="font-size:12px">
-          ✅ Застосувати всі безпечні
+          Застосувати всі безпечні
         </button>
       </div>
     </div>
@@ -171,7 +171,7 @@ export async function renderDashboard(container) {
     <!-- GPU Upscaling Card -->
     <div class="upscaling-card" id="upscaling-card" style="display:none">
       <div class="upscaling-header">
-        <span class="upscaling-icon">⬆</span>
+        <span class="upscaling-icon">[UP]</span>
         <div>
           <div class="upscaling-title" id="upscaling-tech">Завантаження...</div>
           <div class="upscaling-sub">Апскейлінг на рівні драйвера — працює в усіх іграх</div>
@@ -191,7 +191,7 @@ export async function renderDashboard(container) {
     <!-- Web download banner -->
     <div id="web-hero-banner" style="display:none; background: linear-gradient(135deg, rgba(77, 255, 145, 0.1) 0%, rgba(0, 0, 0, 0) 100%); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); padding: 24px; margin-top: 24px; position: relative; overflow: hidden;">
         <div style="position:relative; z-index:2;">
-            <h3 style="color:var(--accent-primary); margin-bottom:8px; font-size:18px;">🚀 Завантаж десктоп додаток</h3>
+            <h3 style="color:var(--accent-primary); margin-bottom:8px; font-size:18px;">Завантаж десктоп додаток</h3>
             <p style="color:var(--text-main); margin-bottom:16px; max-width:600px; font-size:13px;">Веб-версія — тільки демо. Завантаж програму щоб отримати реальний буст FPS.</p>
             <a href="https://rustopti.fun/RustOpti_2.2.3_x64-setup.exe" class="btn btn-primary btn-ripple" style="padding:10px 20px; font-weight:600; font-size:13px;">
                 ↓ Завантажити .EXE — v2.2.2
@@ -225,10 +225,10 @@ export async function renderDashboard(container) {
         toggle.addEventListener('change', async () => {
           try {
             const msg = await api.setUpscaling(toggle.checked, parseInt(sharpSlider.value));
-            note.textContent = '✓ ' + msg;
+            note.textContent = 'OK: ' + msg;
             note.style.color = 'var(--accent-primary)';
           } catch(e) {
-            note.textContent = '✗ ' + e;
+            note.textContent = 'Err: ' + e;
             note.style.color = '#f87171';
           }
         });
@@ -239,7 +239,7 @@ export async function renderDashboard(container) {
         sharpSlider.addEventListener('change', async () => {
           try {
             const msg = await api.setUpscaling(toggle.checked, parseInt(sharpSlider.value));
-            note.textContent = '✓ ' + msg;
+            note.textContent = 'OK: ' + msg;
             note.style.color = 'var(--accent-primary)';
           } catch(e) {}
         });
@@ -336,12 +336,12 @@ export async function renderDashboard(container) {
     }
 
     progressBar.style.width = '100%';
-    stepLabel.textContent = '✓ Готово!';
+    stepLabel.textContent = 'Готово!';
     stepCount.textContent = `${steps.length}/${steps.length}`;
-    statusText.textContent = '✓ Систему оптимізовано';
+    statusText.textContent = 'Систему оптимізовано';
     statusText.style.color = 'var(--accent-primary)';
     rebootNote.style.display = 'block';
-    logSuccess('✓ Оптимізацію завершено! Перезавантаж ПК для повного ефекту.');
+    logSuccess('Оптимізацію завершено! Перезавантаж ПК для повного ефекту.');
 
     setTimeout(() => {
       progressWrap.style.display = 'none';
@@ -382,8 +382,8 @@ export async function renderDashboard(container) {
 // ── AI Panel ──────────────────────────────────────────────────────────────────
 
 const AI_PRIORITY_COLOR = { critical:'#f87171', high:'#fbbf24', medium:'#a0a0a0', low:'#606060' };
-const AI_PRIORITY_ICON  = { critical:'🔴', high:'🟡', medium:'⚪', low:'⚫' };
-const AI_CAT_ICON = { ram:'💾', cpu:'⚡', gpu:'🎮', disk:'💿', power:'🔋', system:'🖥', process:'🔪' };
+const AI_PRIORITY_LABEL = { critical:'КРИТИЧНО', high:'ВАЖЛИВО', medium:'СЕРЕДНІЙ', low:'НИЗЬКИЙ' };
+const AI_CAT_ICON = { ram:'', cpu:'', gpu:'', disk:'', power:'', system:'', process:'' };
 
 let _aiRecs = [];
 
@@ -397,7 +397,7 @@ async function runAiScan() {
 
   if (!list) return;
 
-  if (rescanBtn) { rescanBtn.disabled = true; rescanBtn.textContent = '⏳'; }
+  if (rescanBtn) { rescanBtn.disabled = true; rescanBtn.textContent = '...'; }
   if (subtitle) subtitle.textContent = 'Сканування...';
   if (scoreBadge) scoreBadge.style.display = 'none';
   if (scoreBar) scoreBar.style.display = 'none';
@@ -414,7 +414,7 @@ async function runAiScan() {
   } catch (e) {
     list.innerHTML = `<div style="color:var(--text-3);font-size:13px;padding:12px 0">Не вдалося запустити аналіз: ${e}</div>`;
   } finally {
-    if (rescanBtn) { rescanBtn.disabled = false; rescanBtn.textContent = '🔄 Оновити'; }
+    if (rescanBtn) { rescanBtn.disabled = false; rescanBtn.textContent = 'Оновити'; }
   }
 }
 
@@ -441,7 +441,7 @@ function renderAiResults(result) {
       ? `${critical} критичних проблем · ${high} важливих`
       : high
       ? `${high} важливих покращень`
-      : recs.length ? `${recs.length} рекомендацій` : 'Система оптимізована ✓';
+      : recs.length ? `${recs.length} рекомендацій` : 'Система оптимізована';
   }
 
   // Render recs (show all, sorted by priority)
@@ -453,7 +453,7 @@ function renderAiResults(result) {
 
   if (!sorted.length) {
     list.innerHTML = `<div style="color:var(--success);font-size:13px;padding:12px 0;text-align:center">
-      ✅ Система оптимізована! Рекомендацій немає.
+      Система оптимізована! Рекомендацій немає.
     </div>`;
     return;
   }
@@ -461,10 +461,10 @@ function renderAiResults(result) {
   list.innerHTML = sorted.map(rec => `
     <div class="ai-rec-row" id="ai-rec-${rec.id}">
       <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-        <span style="font-size:16px;flex-shrink:0">${AI_CAT_ICON[rec.category] || '⚙️'}</span>
+        <span style="font-size:16px;flex-shrink:0">${AI_CAT_ICON[rec.category] || '[SYS]'}</span>
         <div style="min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            <span style="color:${AI_PRIORITY_COLOR[rec.priority]};margin-right:5px">${AI_PRIORITY_ICON[rec.priority]}</span>${rec.title}
+            <span style="color:${AI_PRIORITY_COLOR[rec.priority]};margin-right:5px;font-size:10px;font-weight:700">${AI_PRIORITY_LABEL ? AI_PRIORITY_LABEL[rec.priority] : ''}</span>${rec.title}
           </div>
           <div style="font-size:11px;color:var(--text-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rec.reason}</div>
         </div>
@@ -481,12 +481,12 @@ function renderAiResults(result) {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
       const origText = btn.textContent;
-      btn.disabled = true; btn.textContent = '⏳';
+      btn.disabled = true; btn.textContent = '...';
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const msg = await invoke('apply_recommendation', { id });
         logSuccess(msg);
-        btn.textContent = '✅';
+        btn.textContent = 'OK';
         btn.style.color = 'var(--success)';
         const row = document.getElementById(`ai-rec-${id}`);
         if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }

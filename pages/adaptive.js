@@ -17,7 +17,7 @@ const TWEAK_NAMES = [
 export async function renderAdaptive(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 class="page-title neon-pulse">⚡ Adaptive FPS Tuner</h2>
+      <h2 class="page-title neon-pulse">Adaptive FPS Tuner</h2>
       <p class="page-subtitle">Автотестує кожне покращення і зберігає тільки те, що реально дає +FPS</p>
     </div>
     <div id="adp-root">
@@ -32,7 +32,7 @@ export async function renderAdaptive(container) {
          z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--bg-2);border:1px solid var(--border);
                   border-radius:14px;padding:28px;width:360px;max-width:90vw">
-        <div style="font-size:16px;font-weight:800;color:var(--text-1);margin-bottom:6px">⚡ Запустити Adaptive Tuner</div>
+        <div style="font-size:16px;font-weight:800;color:var(--text-1);margin-bottom:6px">Запустити Adaptive Tuner</div>
         <p style="color:var(--text-4);font-size:12px;margin-bottom:20px;line-height:1.6">
           Запусти гру, зайди в матч і натисни "Почати".<br>
           AI виміряє GPU% до і після кожного покращення (~5 хвилин).
@@ -46,7 +46,7 @@ export async function renderAdaptive(container) {
         </label>
         <input id="adp-game-pid" type="number" value="0" class="adp-input" style="margin-bottom:20px"/>
         <div style="display:flex;gap:10px">
-          <button class="btn btn-primary btn-ripple" id="adp-confirm" style="flex:1">▶ Почати тюнінг</button>
+          <button class="btn btn-primary btn-ripple" id="adp-confirm" style="flex:1">Почати тюнінг</button>
           <button class="btn btn-ripple" id="adp-cancel">Скасувати</button>
         </div>
       </div>
@@ -130,10 +130,10 @@ function renderUI(s) {
   if (!root) return;
 
   const PHASE_LABEL = {
-    idle:     '⏸ Готовий до запуску',
-    baseline: '📊 Вимірюємо базовий GPU%',
-    testing:  '🔬 Тестуємо покращення',
-    done:     '✅ Тюнінг завершено',
+    idle:     'Готовий до запуску',
+    baseline: 'Вимірюємо базовий GPU%',
+    testing:  'Тестуємо покращення',
+    done:     'Тюнінг завершено',
   };
 
   const currentTweakName = s.current_tweak_idx > 0 && s.current_tweak_idx <= TWEAK_NAMES.length
@@ -147,13 +147,13 @@ function renderUI(s) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div>
         <div style="font-size:17px;font-weight:800;color:var(--text-1)">
-          ${s.game_name ? `🎮 ${s.game_name}` : 'Adaptive FPS Tuner'}
+          ${s.game_name ? s.game_name : 'Adaptive FPS Tuner'}
         </div>
         <div style="font-size:12px;color:var(--text-4);margin-top:2px">${PHASE_LABEL[s.phase] || s.phase}</div>
       </div>
       ${s.running
-        ? `<button class="btn btn-danger btn-ripple" id="adp-stop">⏹ Зупинити</button>`
-        : `<button class="btn btn-primary btn-ripple" id="adp-start">▶ Запустити тюнінг</button>`
+        ? `<button class="btn btn-danger btn-ripple" id="adp-stop">Зупинити</button>`
+        : `<button class="btn btn-primary btn-ripple" id="adp-start">Запустити тюнінг</button>`
       }
     </div>`;
 
@@ -220,11 +220,11 @@ function renderUI(s) {
             const gainColor = r.gain_pct >= 2 ? '#4ade80' : r.gain_pct < 0 ? '#f87171' : 'var(--text-3)';
             const rowBg = isCurrent ? 'rgba(99,102,241,0.08)' : 'transparent';
             const badge = r.kept
-              ? `<span style="color:#4ade80;font-weight:700">✓ Збережено</span>`
-              : `<span style="color:var(--text-4)">✗ Відхилено</span>`;
+              ? `<span style="color:#4ade80;font-weight:700">Збережено</span>`
+              : `<span style="color:var(--text-4)">Відхилено</span>`;
             return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:${rowBg}">
               <td style="padding:7px 8px;color:${isCurrent ? '#a78bfa' : 'var(--text-2)'};font-weight:${isCurrent ? '700' : '400'}">
-                ${isCurrent ? '⚡ ' : ''}${r.name}
+                ${isCurrent ? '' : ''}${r.name}
               </td>
               <td style="padding:7px 8px;text-align:right;color:var(--text-3)">${r.gpu_before.toFixed(1)}%</td>
               <td style="padding:7px 8px;text-align:right;color:var(--text-3)">${r.gpu_after > 0 ? r.gpu_after.toFixed(1) + '%' : '—'}</td>
@@ -245,7 +245,7 @@ function renderUI(s) {
   // ── Rescan button ──
   if (s.phase === 'done') {
     html += `<div style="text-align:center;margin-top:4px">
-      <button class="btn btn-ripple" id="adp-new-test">↺ Новий тест</button>
+      <button class="btn btn-ripple" id="adp-new-test">Новий тест</button>
     </div>`;
   }
 
@@ -289,7 +289,7 @@ function renderStepIndicator(s) {
       : isCurrent ? '#a78bfa'
       : 'var(--bg-3)';
     const border = isCurrent ? '2px solid #a78bfa' : `1px solid ${isDone ? (kept ? '#4ade80' : 'var(--border)') : 'var(--border)'}`;
-    const icon = isDone ? (kept ? '✓' : '✗') : isCurrent ? '⚡' : (i + 1);
+    const icon = isDone ? (kept ? '+' : '-') : isCurrent ? '>' : (i + 1);
 
     html += `<div style="display:flex;align-items:center;flex-shrink:0">
       <div title="${TWEAK_NAMES[i]}" style="
@@ -340,14 +340,14 @@ async function loadSavedProfile(gameName) {
       <div class="card card-enter" style="margin-top:4px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--text-2)">💾 Збережений профіль</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text-2)">Збережений профіль</div>
             <div style="font-size:11px;color:var(--text-4);margin-top:2px">
               ${gameName} · ${enabled.length} покращень · сумарний буст
               <span style="color:#4ade80;font-weight:700">+${totalGain.toFixed(1)}% GPU</span>
             </div>
           </div>
           <button class="btn btn-primary btn-ripple" id="adp-apply-profile" style="font-size:12px">
-            ▶ Застосувати профіль
+            Застосувати профіль
           </button>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">

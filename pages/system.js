@@ -31,7 +31,7 @@ export async function renderSystem(container) {
 
     <!-- MSI Mode -->
     <div class="section" style="margin-top:24px">
-      <h3 class="section-title">⚡ MSI Mode (GPU Interrupts)</h3>
+      <h3 class="section-title">MSI Mode (GPU Interrupts)</h3>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Switches GPU to Message Signaled Interrupts — reduces input lag by 2-5ms. Requires reboot.</p>
       <div id="msi-status" class="tweak-list"><div class="loading-spinner"></div></div>
       <div class="btn-group" style="margin-top:12px">
@@ -41,7 +41,7 @@ export async function renderSystem(container) {
 
     <!-- SysMain -->
     <div class="section" style="margin-top:24px">
-      <h3 class="section-title">🛑 SysMain (Superfetch)</h3>
+      <h3 class="section-title">SysMain (Superfetch)</h3>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Windows caches apps in background causing disk I/O stutters. Disable for smoother gaming.</p>
       <div id="sysmain-status" class="tweak-list"><div class="loading-spinner"></div></div>
       <div class="btn-group" style="margin-top:12px">
@@ -52,7 +52,7 @@ export async function renderSystem(container) {
 
     <!-- Visual Effects -->
     <div class="section" style="margin-top:24px">
-      <h3 class="section-title">🎨 Visual Effects</h3>
+      <h3 class="section-title">Visual Effects</h3>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Disable Windows animations, transparency, and shadows. Frees GPU/CPU resources for gaming.</p>
       <div id="visual-status" class="tweak-list"><div class="loading-spinner"></div></div>
       <div class="btn-group" style="margin-top:12px">
@@ -191,7 +191,7 @@ async function loadSysmainStatus() {
       <div class="tweak-item">
         <span class="tweak-name">${status.name}</span>
         <span class="tweak-status ${status.optimized ? 'applied' : 'not-applied'}">
-          ${status.optimized ? '✅ Disabled' : '⚠ ' + status.current_value}
+          ${status.optimized ? 'Disabled' : status.current_value}
         </span>
       </div>
     `;
@@ -205,7 +205,7 @@ async function loadVisualStatus() {
       <div class="tweak-item">
         <span class="tweak-name">${status.name}</span>
         <span class="tweak-status ${status.optimized ? 'applied' : 'not-applied'}">
-          ${status.optimized ? '✅ Best Performance' : '⚠ ' + status.current_value}
+          ${status.optimized ? 'Best Performance' : status.current_value}
         </span>
       </div>
     `;

@@ -15,7 +15,7 @@ export async function renderDeepTweaks(container) {
 
     <!-- ISLC Section -->
     <div class="section">
-      <h3 class="section-title">⚡ ${t('deep.islc_title')}</h3>
+      <h3 class="section-title">${t('deep.islc_title')}</h3>
       <p class="page-subtitle" style="margin-bottom:16px">${t('deep.islc_subtitle')}</p>
 
       <div id="standby-info" class="tweak-list">
@@ -52,7 +52,7 @@ export async function renderDeepTweaks(container) {
 
     <!-- Core Unparking Section -->
     <div class="section" style="margin-top:32px">
-      <h3 class="section-title">🔓 ${t('deep.core_title')}</h3>
+      <h3 class="section-title">${t('deep.core_title')}</h3>
       <p class="page-subtitle" style="margin-bottom:16px">${t('deep.core_subtitle')}</p>
 
       <div id="core-status" class="tweak-list">
@@ -67,7 +67,7 @@ export async function renderDeepTweaks(container) {
 
     <!-- Timer Resolution Section -->
     <div class="section" style="margin-top:32px">
-      <h3 class="section-title">⏱ Timer Resolution (0.5ms)</h3>
+      <h3 class="section-title">Timer Resolution (0.5ms)</h3>
       <p class="page-subtitle" style="margin-bottom:16px">Windows default: 15.6ms. Gaming optimal: 0.5ms. Gives +5-15 FPS and smoother input in all games.</p>
 
       <div id="timer-status" class="tweak-list">
@@ -83,7 +83,7 @@ export async function renderDeepTweaks(container) {
 
     <!-- HPET Section -->
     <div class="section" style="margin-top:32px">
-      <h3 class="section-title">🔧 HPET (High Precision Event Timer)</h3>
+      <h3 class="section-title">HPET (High Precision Event Timer)</h3>
       <p class="page-subtitle" style="margin-bottom:16px">Disabling HPET forces Windows to use TSC — a faster timer. Gives +5-10 FPS. Safe and reversible. Requires reboot.</p>
 
       <div id="hpet-status" class="tweak-list">
@@ -96,7 +96,7 @@ export async function renderDeepTweaks(container) {
       </div>
 
       <div style="margin-top:12px; padding:12px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:var(--radius-sm)">
-        <p style="color:var(--warning); font-size:12px">⚠ HPET changes require a system reboot to take effect.</p>
+        <p style="color:var(--warning); font-size:12px">HPET changes require a system reboot to take effect.</p>
       </div>
     </div>
   `;
@@ -265,7 +265,7 @@ async function loadStandbyInfo() {
         <span class="tweak-status" style="color:${usageColor}">${info.used_ram_mb} MB (${info.usage_percent.toFixed(1)}%)</span>
       </div>
       <div class="tweak-item">
-        <span class="tweak-name">⚠ ${t('deep.standby')}</span>
+        <span class="tweak-name">${t('deep.standby')}</span>
         <span class="tweak-status" style="color:#ffb347; font-weight:600">${info.standby_mb} MB</span>
       </div>
       <div class="tweak-item">
@@ -327,7 +327,7 @@ async function loadCoreStatus() {
       <div class="tweak-item">
         <span class="tweak-name">Status</span>
         <span class="tweak-status ${!status.cores_parked ? 'applied' : 'not-applied'}">
-          ${status.cores_parked ? '❌ ' + t('deep.parked') : '✅ ' + t('deep.unparked')}
+          ${status.cores_parked ? t('deep.parked') : t('deep.unparked')}
         </span>
       </div>
     `;
@@ -355,7 +355,7 @@ async function loadTimerStatus() {
       <div class="tweak-item">
         <span class="tweak-name">Status</span>
         <span class="tweak-status ${isBoosted ? 'applied' : 'not-applied'}">
-          ${isBoosted ? '✅ Boosted (0.5ms)' : '⚠ Default (15.6ms)'}
+          ${isBoosted ? 'Boosted (0.5ms)' : 'Default (15.6ms)'}
         </span>
       </div>
     `;
@@ -374,7 +374,7 @@ async function loadHpetStatus() {
       <div class="tweak-item">
         <span class="tweak-name">HPET</span>
         <span class="tweak-status ${status.hpet_enabled ? 'not-applied' : 'applied'}">
-          ${status.hpet_enabled ? '⚠ Enabled (slower)' : '✅ Disabled (TSC active)'}
+          ${status.hpet_enabled ? 'Enabled (slower)' : 'Disabled (TSC active)'}
         </span>
       </div>
     `;

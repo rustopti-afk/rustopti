@@ -12,7 +12,7 @@ let lastDetectedPid = 0;
 export async function renderGameMode(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 class="page-title neon-pulse">🎮 AI Game Mode</h2>
+      <h2 class="page-title neon-pulse">AI Game Mode</h2>
       <p class="page-subtitle">ШІ навчається від кожної сесії і стає розумнішим з часом</p>
     </div>
 
@@ -29,7 +29,7 @@ export async function renderGameMode(container) {
             <div id="gm-game-pid"   style="font-size:12px;color:var(--text-4);margin-top:2px"></div>
           </div>
           <button class="btn btn-danger btn-ripple" id="gm-btn-deactivate" disabled style="flex-shrink:0">
-            ⏹ Деактивувати
+            Деактивувати
           </button>
         </div>
 
@@ -82,13 +82,13 @@ export async function renderGameMode(container) {
 
     <!-- Idle status card -->
     <div id="gm-idle-card" class="card" style="margin-bottom:16px;text-align:center;padding:24px">
-      <div style="font-size:36px;margin-bottom:8px">🎮</div>
+      
       <div style="font-size:16px;font-weight:700;color:var(--text-1);margin-bottom:4px">Очікує запуску гри</div>
       <div style="font-size:13px;color:var(--text-3);margin-bottom:16px">
         AI автоматично активується і оптимізує систему
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-primary btn-ripple" id="gm-btn-scan">🔍 Сканувати зараз</button>
+        <button class="btn btn-primary btn-ripple" id="gm-btn-scan">Сканувати зараз</button>
       </div>
       <div id="gm-detected" style="margin-top:12px;font-size:13px;color:var(--text-3)"></div>
     </div>
@@ -98,7 +98,7 @@ export async function renderGameMode(container) {
       <div style="display:flex;justify-content:space-between;align-items:center;
                   margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
         <h3 class="section-title" style="margin:0;border:none;padding:0">
-          🧠 AI Профілі ігор
+          AI Профілі ігор
           <span style="font-size:11px;font-weight:400;color:var(--text-4);margin-left:6px">
             навчається від сесії до сесії
           </span>
@@ -114,7 +114,7 @@ export async function renderGameMode(container) {
     <div class="section" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;
                   margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
-        <h3 class="section-title" style="margin:0;border:none;padding:0">📊 Глибокий аналіз: Harm Scores</h3>
+        <h3 class="section-title" style="margin:0;border:none;padding:0">Глибокий аналіз: Harm Scores</h3>
         <select id="gm-harm-game-select" style="
           background:var(--bg-3);border:1px solid var(--border);color:var(--text-1);
           padding:4px 8px;border-radius:6px;font-size:12px
@@ -129,7 +129,7 @@ export async function renderGameMode(container) {
 
     <!-- Session History -->
     <div class="section">
-      <h3 class="section-title">📅 Історія сесій</h3>
+      <h3 class="section-title">Історія сесій</h3>
       <div id="gm-sessions-list" style="font-size:13px;color:var(--text-3)">
         <div class="gm-loading">Завантаження...</div>
       </div>
@@ -232,7 +232,7 @@ async function scanForGames() {
   try {
     const [gameName, pid] = await invoke('detect_running_game').catch(() => ['', 0]);
     if (pid) {
-      el.innerHTML = `<span style="color:var(--success)">✓ Знайдено: ${escHtml(gameName)} (PID ${pid})</span>`;
+      el.innerHTML = `<span style="color:var(--success)">Знайдено: ${escHtml(gameName)} (PID ${pid})</span>`;
       logInfo(`Found game: ${gameName} — auto-activating...`);
       await activate(gameName, pid);
     } else {
@@ -252,7 +252,7 @@ function showActiveUI(status) {
   if (idleCard)     idleCard.style.display = 'none';
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('gm-game-title', `🎮 ${status.current_game}`);
+  set('gm-game-title', status.current_game);
   set('gm-game-pid',   `PID ${status.current_pid}`);
   set('gm-killed', status.processes_killed);
   set('gm-ram',    status.ram_freed_mb);
@@ -371,7 +371,7 @@ function renderProfileCard(profile, harmScores) {
       <!-- Learning progress bar -->
       <div style="margin-top:10px">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-4);margin-bottom:4px">
-          <span>${profile.session_count < SESSION_CONFIDENCE ? `Навчається: ${profile.session_count}/${SESSION_CONFIDENCE} сесій` : '🧠 Повністю навчено'}</span>
+          <span>${profile.session_count < SESSION_CONFIDENCE ? `Навчається: ${profile.session_count}/${SESSION_CONFIDENCE} сесій` : 'Повністю навчено'}</span>
           ${profile.session_count < SESSION_CONFIDENCE ? `<span>ще ${SESSION_CONFIDENCE - profile.session_count} сесій</span>` : ''}
         </div>
         <div style="height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden">
@@ -387,7 +387,7 @@ function renderProfileCard(profile, harmScores) {
           ${topHarmful.map(s => {
             const color = s.score >= 0.65 ? '#ef4444' : s.score >= 0.3 ? '#f97316' : '#eab308';
             const pct   = Math.round(((s.score + 1) / 2) * 100);
-            const tag   = s.score >= 0.65 && s.sessions >= 2 ? ' ✗' : '';
+            const tag   = s.score >= 0.65 && s.sessions >= 2 ? ' X' : '';
             return `<div style="display:flex;align-items:center;gap:5px;
                       background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
                       border-radius:6px;padding:3px 8px">
@@ -400,7 +400,7 @@ function renderProfileCard(profile, harmScores) {
         </div>
       </div>` : profile.session_count > 0 ? `
       <div style="margin-top:8px;font-size:11px;color:var(--text-4)">
-        🤖 Збираємо дані... зіграй ще ${Math.max(1, SESSION_CONFIDENCE - profile.session_count)} сесію
+        Збираємо дані... зіграй ще ${Math.max(1, SESSION_CONFIDENCE - profile.session_count)} сесію
       </div>` : ''}
 
       <!-- Kill list -->

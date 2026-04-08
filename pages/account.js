@@ -36,7 +36,7 @@ function renderAccountInfo(container, info) {
     content.innerHTML = `
       <div class="section" style="max-width:480px;width:100%">
         <div style="text-align:center;padding:32px">
-          <div style="font-size:48px;margin-bottom:16px">🔒</div>
+          <div style="font-size:48px;margin-bottom:16px">[LOCKED]</div>
           <h3 style="color:var(--text-main);margin:0 0 8px">Ліцензія не активована</h3>
           <p style="color:var(--text-muted);font-size:13px">Введіть ключ на сторінці активації</p>
         </div>
@@ -73,7 +73,7 @@ function renderAccountInfo(container, info) {
       expiryColor = '#ef4444';
       urgentBar = `
         <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
-          <span style="font-size:20px">⚠️</span>
+          
           <div>
             <div style="color:#ef4444;font-weight:600;font-size:13px">Підписка закінчується скоро!</div>
             <div style="color:#9ca3af;font-size:12px;margin-top:2px">Залишилось ${daysLeft} ${getDayWord(daysLeft)} — продовжіть на сайті</div>
@@ -88,8 +88,8 @@ function renderAccountInfo(container, info) {
   }
 
   const planLabel = isLifetime
-    ? '<span style="color:#c0c0c0">👑 Lifetime</span>'
-    : '<span style="color:#60a5fa">⚡ Місячна</span>';
+    ? '<span style="color:#c0c0c0">Lifetime</span>'
+    : '<span style="color:#60a5fa">Місячна</span>';
 
   const daysBlock = (!isLifetime && daysLeft !== null) ? `
     <div class="stat-card" style="grid-column:span 2">
@@ -109,7 +109,7 @@ function renderAccountInfo(container, info) {
       ${urgentBar}
 
       <div class="section">
-        <h3 class="section-title" style="margin-bottom:16px">📋 Підписка</h3>
+        <h3 class="section-title" style="margin-bottom:16px">Підписка</h3>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
 
@@ -129,7 +129,7 @@ function renderAccountInfo(container, info) {
 
         <div style="background:rgba(200,200,200,0.05);border:1px solid rgba(200,200,200,0.1);border-radius:8px;padding:12px 16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="color:#c0c0c0;font-size:14px">✅</span>
+            
             <span style="color:var(--text-main);font-size:13px;font-weight:500">Ліцензія активна</span>
           </div>
           <p style="color:var(--text-muted);font-size:12px;margin:0">
@@ -140,7 +140,7 @@ function renderAccountInfo(container, info) {
 
       ${!isLifetime ? `
       <div class="section" style="margin-top:12px">
-        <h3 class="section-title" style="margin-bottom:12px">⬆️ Апгрейд</h3>
+        <h3 class="section-title" style="margin-bottom:12px">Апгрейд</h3>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(200,200,200,0.05);border:1px solid rgba(200,200,200,0.1);border-radius:8px">
           <div>
             <div style="color:var(--text-main);font-weight:600;font-size:13px">Lifetime ліцензія</div>

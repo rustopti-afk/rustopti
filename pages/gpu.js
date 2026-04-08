@@ -20,7 +20,7 @@ export async function renderGpu(container) {
     </div>
 
     <div class="section">
-      <h3 class="section-title">⚡ Visual Profile — 1 клік</h3>
+      <h3 class="section-title">Visual Profile — 1 клік</h3>
       <div class="card" style="background:rgba(42,125,225,0.06);border:1px solid rgba(42,125,225,0.2);padding:16px;margin-bottom:12px">
         <div style="font-size:13px;color:var(--text-2);margin-bottom:12px">
           Встановлює оптимальні налаштування дисплея та Rust cfg:
@@ -40,7 +40,7 @@ export async function renderGpu(container) {
           </div>
         </div>
         <button class="btn btn-primary btn-ripple" id="btn-visual-profile" style="width:100%;justify-content:center">
-          ⚡ Застосувати Visual Profile
+          Застосувати Visual Profile
         </button>
         <div id="visual-profile-results" style="margin-top:10px"></div>
       </div>
@@ -69,24 +69,24 @@ export async function renderGpu(container) {
     const btn = document.getElementById('btn-visual-profile');
     const resultsEl = document.getElementById('visual-profile-results');
     btn.disabled = true;
-    btn.textContent = '⏳ Застосовується...';
+    btn.textContent = 'Застосовується...';
     playEnable();
     try {
       const results = await api.applyVisualProfile();
       resultsEl.innerHTML = results.map(r => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
-          <span style="color:${r.success ? 'var(--success)' : 'var(--danger)'}">${r.success ? '✓' : '✗'}</span>
+          <span style="color:${r.success ? 'var(--success)' : 'var(--danger)'}">${r.success ? '+' : '-'}</span>
           <span style="color:var(--text-2)">${r.message}</span>
         </div>
       `).join('');
       showToast('Visual Profile застосовано!', 'success');
       logSuccess('Visual Profile applied');
     } catch (e) {
-      resultsEl.innerHTML = `<div style="color:var(--danger);font-size:12px">✗ ${e}</div>`;
+      resultsEl.innerHTML = `<div style="color:var(--danger);font-size:12px">Помилка: ${e}</div>`;
       logError(`Visual Profile error: ${e}`);
     }
     btn.disabled = false;
-    btn.textContent = '⚡ Застосувати Visual Profile';
+    btn.textContent = 'Застосувати Visual Profile';
   });
 
   document.getElementById('btn-gpu-optimize')?.addEventListener('click', async () => {

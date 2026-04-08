@@ -27,21 +27,21 @@ export async function renderSettings(container) {
     </div>
 
     <div class="section">
-      <h3 class="section-title">🌐 Мова інтерфейсу</h3>
+      <h3 class="section-title">Мова інтерфейсу</h3>
       <div class="tweak-list">
         <div class="keybind-row">
           <span class="keybind-label">Мова / Language</span>
           <select id="settings-lang-select" style="padding:6px 12px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-main);font-size:13px;outline:none;cursor:pointer;">
-            <option value="en">🌐 English</option>
-            <option value="uk">🇺🇦 Українська</option>
-            <option value="ru">🇷🇺 Русский</option>
+            <option value="en">English</option>
+            <option value="uk">Українська</option>
+            <option value="ru">Русский</option>
           </select>
         </div>
       </div>
     </div>
 
     <div class="section">
-      <h3 class="section-title">🔔 Повідомлення</h3>
+      <h3 class="section-title">Повідомлення</h3>
       <div class="tweak-list">
         <div class="keybind-row">
           <div>
@@ -64,14 +64,14 @@ export async function renderSettings(container) {
     </div>
 
     <div class="section">
-      <h3 class="section-title">⌨ Keybinds</h3>
+      <h3 class="section-title">Keybinds</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Натисни на клавішу щоб змінити. Працює коли фокус не в полі вводу.</p>
       <div id="keybinds-list"></div>
       <div class="btn-group" style="margin-top:12px">
         <button class="btn btn-ripple" id="btn-reset-binds" style="background:rgba(255,255,255,0.04)">Скинути до дефолту</button>
-        <button class="btn btn-ripple" id="btn-export-cfg" style="background:rgba(157,94,245,0.08);color:var(--accent-bright)">⬇ Export .cfg</button>
+        <button class="btn btn-ripple" id="btn-export-cfg" style="background:rgba(157,94,245,0.08);color:var(--accent-bright)">Export .cfg</button>
         <label class="btn btn-ripple" style="background:rgba(157,94,245,0.08);color:var(--accent-bright);cursor:pointer">
-          ⬆ Import .cfg<input type="file" id="cfg-file-input" accept=".cfg,.json" style="display:none">
+          Import .cfg<input type="file" id="cfg-file-input" accept=".cfg,.json" style="display:none">
         </label>
       </div>
     </div>

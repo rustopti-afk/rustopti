@@ -6,27 +6,27 @@ import { showToast } from '../js/toast.js';
 export async function renderGameBoost(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 class="page-title neon-pulse">🚀 Game Boost</h2>
+      <h2 class="page-title neon-pulse">Game Boost</h2>
       <p class="page-subtitle">Maximum FPS — one-click game mode, Defender exclusion, Large Pages & CPU affinity</p>
     </div>
 
     <!-- Active Protection -->
     <div class="section" style="background: linear-gradient(135deg, rgba(77,255,145,0.08), rgba(0,0,0,0)); border-color: var(--success); margin-bottom:24px">
-      <h3 class="section-title">🟢 Active Protection</h3>
+      <h3 class="section-title">Active Protection</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
         Фоновий захист кожні <b>30 секунд</b>: прибирає неактивну RAM у фонових процесів та підтримує Rust на High priority.
         Увімкни один раз — комп відчувається super clean весь сеанс.
       </p>
       <div id="protection-status" style="margin-bottom:14px;font-size:13px;color:var(--text-disabled)">Перевіряємо...</div>
       <div class="btn-group">
-        <button class="btn btn-success btn-ripple" id="btn-start-protection" style="padding:12px 28px;font-size:14px;font-weight:700">🟢 Увімкнути</button>
+        <button class="btn btn-success btn-ripple" id="btn-start-protection" style="padding:12px 28px;font-size:14px;font-weight:700">Увімкнути</button>
         <button class="btn btn-ripple" id="btn-stop-protection">Вимкнути</button>
       </div>
     </div>
 
     <!-- Game Mode (one-click) -->
     <div class="section" style="background: linear-gradient(135deg, rgba(200,200,200,0.05), rgba(0,0,0,0)); border-color: var(--accent-primary)">
-      <h3 class="section-title">🎮 Game Mode — One Click Boost</h3>
+      <h3 class="section-title">Game Mode — One Click Boost</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
         Start Rust first, then activate. Kills bloatware, sets High priority, pins to fast CPU cores, clears RAM.
       </p>
@@ -34,19 +34,19 @@ export async function renderGameBoost(container) {
         <div class="loading-spinner"></div>
       </div>
       <div class="btn-group">
-        <button class="btn btn-primary btn-ripple" id="btn-activate-gm" style="padding:12px 24px;font-size:14px">⚡ Activate Game Mode</button>
+        <button class="btn btn-primary btn-ripple" id="btn-activate-gm" style="padding:12px 24px;font-size:14px">Activate Game Mode</button>
         <button class="btn btn-ripple" id="btn-deactivate-gm">Deactivate</button>
       </div>
     </div>
 
     <!-- Defender Exclusion -->
     <div class="section" style="margin-top:24px">
-      <h3 class="section-title">🛡 Windows Defender Exclusion</h3>
+      <h3 class="section-title">Windows Defender Exclusion</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:4px">
         Defender scans every file Rust loads. Excluding the game folder gives <span style="color:var(--success);font-weight:600">+10-20 FPS</span> — the single biggest optimization.
       </p>
       <p style="color:var(--warning);font-size:11px;margin-bottom:16px">
-        ⚠ Only excludes the Rust game folder. Defender stays active for everything else.
+        Only excludes the Rust game folder. Defender stays active for everything else.
       </p>
       <div id="defender-status" class="tweak-list" style="margin-bottom:12px">
         <div class="loading-spinner"></div>
@@ -59,7 +59,7 @@ export async function renderGameBoost(container) {
 
     <!-- Large Pages -->
     <div class="section" style="margin-top:24px">
-      <h3 class="section-title">📄 Large Pages</h3>
+      <h3 class="section-title">Large Pages</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
         Enables "Lock Pages in Memory" for your user account. Reduces CPU TLB misses, gives <span style="color:var(--success);font-weight:600">+5-15% FPS</span> in Unity games like Rust. Requires reboot.
       </p>
@@ -84,7 +84,7 @@ export async function renderGameBoost(container) {
   document.getElementById('btn-start-protection')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-start-protection');
     btn.disabled = true;
-    btn.textContent = '⏳ Запускаємо...';
+    btn.textContent = 'Запускаємо...';
     logInfo('Starting Active Protection...');
     try {
       const result = await api.startActiveProtection();
@@ -95,7 +95,7 @@ export async function renderGameBoost(container) {
       logError(`Failed: ${e}`);
     }
     btn.disabled = false;
-    btn.textContent = '🟢 Увімкнути';
+    btn.textContent = 'Увімкнути';
   });
 
   document.getElementById('btn-stop-protection')?.addEventListener('click', async () => {
@@ -112,7 +112,7 @@ export async function renderGameBoost(container) {
   // Game Mode
   document.getElementById('btn-activate-gm')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-activate-gm');
-    btn.textContent = '⏳ Activating...';
+    btn.textContent = 'Activating...';
     btn.disabled = true;
     logInfo('Activating Game Mode...');
     try {
@@ -124,7 +124,7 @@ export async function renderGameBoost(container) {
     } catch (e) {
       logError(`Failed: ${e}`);
     }
-    btn.textContent = '⚡ Activate Game Mode';
+    btn.textContent = 'Activate Game Mode';
     btn.disabled = false;
   });
 
@@ -181,10 +181,10 @@ async function loadActiveProtectionStatus() {
   try {
     const active = await api.getActiveProtectionStatus();
     el.innerHTML = active
-      ? `<span style="color:var(--success);font-weight:600">🟢 Активний — RAM trim & Rust priority кожні 30с</span>`
-      : `<span style="color:var(--text-disabled)">⚫ Вимкнено</span>`;
+      ? `<span style="color:var(--success);font-weight:600">Активний — RAM trim & Rust priority кожні 30с</span>`
+      : `<span style="color:var(--text-disabled)">Вимкнено</span>`;
   } catch {
-    el.innerHTML = `<span style="color:var(--text-disabled)">⚫ Вимкнено</span>`;
+    el.innerHTML = `<span style="color:var(--text-disabled)">Вимкнено</span>`;
   }
 }
 
@@ -198,7 +198,7 @@ async function loadGameModeStatus() {
       <div class="tweak-item">
         <span class="tweak-name">Game Mode</span>
         <span class="tweak-status ${status.game_mode_active ? 'applied' : 'not-applied'}">
-          ${status.game_mode_active ? '✅ Active' : '⚠ Inactive'}
+          ${status.game_mode_active ? 'Active' : 'Inactive'}
         </span>
       </div>
       <div class="tweak-item">
