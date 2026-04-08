@@ -7,8 +7,8 @@ let pollInterval = null;
 export async function renderGameMode(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 class="page-title neon-pulse">🎮 Game Mode AI</h2>
-      <p class="page-subtitle">Автоматична оптимізація при запуску гри</p>
+      <h2 class="page-title neon-pulse">🎮 AI Game Mode</h2>
+      <p class="page-subtitle">ШІ автоматично активує оптимізацію при запуску гри</p>
     </div>
 
     <!-- Status Card -->
@@ -43,6 +43,10 @@ export async function renderGameMode(container) {
           <span class="gm-stat-val" id="gm-uptime">00:00</span>
           <span class="gm-stat-label">тривалість</span>
         </div>
+        <div class="gm-stat">
+          <span class="gm-stat-val" id="gm-samples" style="color:#a78bfa">0</span>
+          <span class="gm-stat-label">семплів AI</span>
+        </div>
       </div>
     </div>
 
@@ -74,6 +78,21 @@ export async function renderGameMode(container) {
       </div>
     </div>
 
+    <!-- Harm Scores (AI learned) -->
+    <div class="section" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <h3 class="section-title" style="margin:0;border:none;padding:0">🧠 AI: Шкідливі процеси</h3>
+        <select id="gm-harm-game-select" style="
+          background:var(--bg-3);border:1px solid var(--border);color:var(--text-1);
+          padding:4px 8px;border-radius:6px;font-size:12px
+        "><option value="">— обери гру —</option></select>
+      </div>
+      <div id="gm-harm-list" style="font-size:13px;color:var(--text-4)">
+        Обери гру вище щоб побачити harm scores
+      </div>
+    </div>
+
     <!-- Session History -->
     <div class="section">
       <h3 class="section-title">Історія сесій</h3>
@@ -91,6 +110,10 @@ export async function renderGameMode(container) {
   document.getElementById('gm-btn-scan')?.addEventListener('click', scanForGames);
   document.getElementById('gm-btn-deactivate')?.addEventListener('click', deactivate);
   document.getElementById('gm-btn-refresh-profiles')?.addEventListener('click', loadProfiles);
+
+  document.getElementById('gm-harm-game-select')?.addEventListener('change', async (e) => {
+    if (e.target.value) await loadHarmScores(e.target.value);
+  });
 }
 
 // ── Auto-detect loop ──────────────────────────────────────────────────────────
@@ -123,6 +146,13 @@ async function autoDetect() {
         return;
       }
       setActiveUI(status);
+
+      // Update AI sample counter
+      const learningInfo = await invoke('get_learning_status').catch(() => null);
+      if (learningInfo?.active) {
+        const el = document.getElementById('gm-samples');
+        if (el) el.textContent = learningInfo.samples;
+      }
       return;
     }
 
@@ -242,6 +272,14 @@ async function loadProfiles() {
     const el = document.getElementById('gm-profiles-list');
     if (!el) return;
 
+    // Populate harm scores game select
+    const select = document.getElementById('gm-harm-game-select');
+    if (select) {
+      const current = select.value;
+      select.innerHTML = '<option value="">— обери гру —</option>' +
+        profiles.map(p => `<option value="${escHtml(p.game_name)}" ${p.game_name === current ? 'selected' : ''}>${escHtml(p.game_name)}</option>`).join('');
+    }
+
     if (!profiles.length) {
       el.innerHTML = '<span style="color:var(--text-4)">Ще немає профілів. Запусти гру!</span>';
       return;
@@ -254,14 +292,65 @@ async function loadProfiles() {
           <span style="color:var(--text-3);margin-left:10px;font-size:12px">
             ${p.session_count} сесій · ${escHtml(p.last_seen)}
           </span>
-          ${p.kill_list ? `<div style="color:var(--text-3);font-size:11px;margin-top:2px">
-            Kill list: ${escHtml(p.kill_list)}
-          </div>` : ''}
+          ${p.kill_list ? `<div style="color:#a78bfa;font-size:11px;margin-top:3px">
+            🎯 AI Kill list: ${escHtml(p.kill_list)}
+          </div>` : '<div style="color:var(--text-4);font-size:11px;margin-top:3px">Ще навчається...</div>'}
         </div>
       </div>
     `).join('');
   } catch (e) {
     document.getElementById('gm-profiles-list').textContent = `Помилка: ${e}`;
+  }
+}
+
+async function loadHarmScores(gameName) {
+  const el = document.getElementById('gm-harm-list');
+  if (!el) return;
+  el.textContent = 'Завантаження...';
+  try {
+    const scores = await invoke('get_harm_scores', { gameName });
+    if (!scores.length) {
+      el.innerHTML = '<span style="color:var(--text-4)">Ще немає даних. Зіграй хоча б одну сесію!</span>';
+      return;
+    }
+
+    el.innerHTML = `
+      <div style="font-size:11px;color:var(--text-4);margin-bottom:8px">
+        Harm score: +1.0 = завжди присутній під час фризів, -1.0 = ніколи не заважає.
+        Порогове значення для kill list: 0.65 (мін. 2 сесії)
+      </div>
+      <table class="process-table" style="width:100%">
+        <thead><tr>
+          <th>Процес</th><th>Score</th><th>Сесій</th><th>Статус</th>
+        </tr></thead>
+        <tbody>
+          ${scores.map(s => {
+            const pct = Math.round(((s.score + 1) / 2) * 100);
+            const color = s.score >= 0.65 ? '#ef4444' : s.score >= 0.3 ? '#f97316' : s.score >= 0 ? '#eab308' : '#22c55e';
+            const badge = s.score >= 0.65 && s.sessions >= 2
+              ? '<span style="background:#ef444420;color:#ef4444;padding:1px 6px;border-radius:4px;font-size:10px">KILL LIST</span>'
+              : s.score >= 0.3
+              ? '<span style="background:#f9731620;color:#f97316;padding:1px 6px;border-radius:4px;font-size:10px">підозрілий</span>'
+              : '<span style="color:var(--text-4);font-size:10px">нормальний</span>';
+            return `<tr>
+              <td style="color:var(--text-1)">${escHtml(s.proc_name)}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:60px;height:4px;background:var(--bg-3);border-radius:2px">
+                    <div style="width:${pct}%;height:100%;background:${color};border-radius:2px"></div>
+                  </div>
+                  <span style="color:${color}">${s.score.toFixed(3)}</span>
+                </div>
+              </td>
+              <td style="color:var(--text-3)">${s.sessions}</td>
+              <td>${badge}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (e) {
+    el.textContent = `Помилка: ${e}`;
   }
 }
 

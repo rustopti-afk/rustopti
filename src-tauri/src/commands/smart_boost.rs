@@ -280,14 +280,21 @@ pub fn smart_analyze(state: State<'_, LicenseState>) -> Result<SmartAnalysisResu
         applied:     false,
     });
 
+    // ── Check real applied state for each recommendation ────────────
+    for rec in &mut recs {
+        rec.applied = is_applied(&rec.id);
+    }
+
     // ── Calculate score ──────────────────────────────────────────────
-    // Score = 100 - (penalty per unresolved critical/high recommendation)
-    let penalty: u8 = recs.iter().map(|r| match r.priority {
-        Priority::Critical => 15u32,
-        Priority::High     => 8u32,
-        Priority::Medium   => 3u32,
-        Priority::Low      => 1u32,
-    }).sum::<u32>().min(100) as u8;
+    // Score = 100 - (penalty per UNRESOLVED critical/high recommendation)
+    let penalty: u8 = recs.iter()
+        .filter(|r| !r.applied)   // skip already-applied tweaks
+        .map(|r| match r.priority {
+            Priority::Critical => 15u32,
+            Priority::High     => 8u32,
+            Priority::Medium   => 3u32,
+            Priority::Low      => 1u32,
+        }).sum::<u32>().min(100) as u8;
     let score = 100u8.saturating_sub(penalty);
 
     // Sort: Critical first, then High, Medium, Low
@@ -409,6 +416,87 @@ pub fn apply_recommendation(id: String, state: State<'_, LicenseState>) -> Resul
             Ok("AMD optimizations applied (ULPS disabled)".into())
         }
         _ => Err(format!("Unknown recommendation id: {}", id)),
+    }
+}
+
+// ── Applied-state checkers ────────────────────────────────────────────────────
+
+/// Returns true if a recommendation is already applied on this system.
+fn is_applied(id: &str) -> bool {
+    use winreg::{RegKey, enums::*};
+    use std::process::Command;
+    use std::os::windows::process::CommandExt;
+    const NO_WIN: u32 = 0x08000000;
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+
+    let ps_bool = |cmd: &str| -> bool {
+        Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", cmd])
+            .creation_flags(NO_WIN)
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_lowercase() == "true")
+            .unwrap_or(false)
+    };
+
+    match id {
+        "timer_resolution" => hklm
+            .open_subkey(r"SYSTEM\CurrentControlSet\Control\Session Manager\kernel")
+            .and_then(|k| k.get_value::<u32, _>("GlobalTimerResolutionRequests"))
+            .map(|v| v == 1)
+            .unwrap_or(false),
+
+        "power_plan" => ps_bool(
+            "(powercfg /getactivescheme) -match 'e9a42b02-d5df-448d-aa00-03f14749eb61'"
+        ),
+
+        "unpark_cores" => ps_bool(
+            "$v = (powercfg /query SCHEME_CURRENT SUB_PROCESSOR CPMINCORES 2>$null); ($v | Select-String 'Current AC Power Setting Index: 0x00000064') -ne $null"
+        ),
+
+        "disable_indexer" => ps_bool(
+            "(Get-Service -Name WSearch -ErrorAction SilentlyContinue).StartType -eq 'Disabled'"
+        ),
+
+        "disable_superfetch" => ps_bool(
+            "(Get-Service -Name SysMain -ErrorAction SilentlyContinue).StartType -eq 'Disabled'"
+        ),
+
+        "visual_effects" => hkcu
+            .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects")
+            .and_then(|k| k.get_value::<u32, _>("VisualFXSetting"))
+            .map(|v| v == 2)
+            .unwrap_or(false),
+
+        "disable_hpet" => hklm
+            .open_subkey(r"SYSTEM\CurrentControlSet\services\hpet")
+            .and_then(|k| k.get_value::<u32, _>("Start"))
+            .map(|v| v == 4)
+            .unwrap_or(false),
+
+        "msi_mode" => ps_bool(
+            r#"$path = (Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Enum\PCI' -Recurse -EA SilentlyContinue | Where-Object { try { (Get-ItemProperty $_.PSPath).Class -eq 'Display' } catch { $false } } | Select-Object -First 1)?.PSPath; if ($path) { $msi = (Get-ItemProperty -EA SilentlyContinue "$path\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties")?.MSISupported; $msi -eq 1 } else { $false }"#
+        ),
+
+        "nvidia_tweaks" | "nvidia_low_latency" => hklm
+            .open_subkey(r"SYSTEM\CurrentControlSet\Services\nvlddmkm")
+            .and_then(|k| k.get_value::<u32, _>("EnableMidBufferPreemption"))
+            .map(|v| v == 0)
+            .unwrap_or(false),
+
+        "amd_tweaks" => hklm
+            .open_subkey(r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000")
+            .and_then(|k| k.get_value::<u32, _>("EnableUlps"))
+            .map(|v| v == 0)
+            .unwrap_or(false),
+
+        "win11_scheduler" => ps_bool(
+            "(bcdedit /enum 2>$null) -match 'disabledynamictick\\s+Yes'"
+        ),
+
+        // RAM and process tweaks are one-shot — never "permanently applied"
+        _ => false,
     }
 }
 

@@ -5,6 +5,7 @@ use std::os::windows::process::CommandExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use sysinfo::System;
 use crate::utils::license_guard::{LicenseState, require_license};
+use crate::commands::game_mode::GameModeState;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -245,12 +246,23 @@ pub fn enable_large_pages(state: State<'_, LicenseState>) -> Result<GameBoostRes
 
 /// Activate game mode — optimize everything for Rust
 #[tauri::command]
-pub fn activate_game_mode(state: State<'_, LicenseState>) -> Result<Vec<GameBoostResult>, String> {
+pub fn activate_game_mode(
+    state:     State<'_, LicenseState>,
+    gm_state:  State<'_, GameModeState>,
+) -> Result<Vec<GameBoostResult>, String> {
     require_license(&state)?;
 
     let mut results = Vec::new();
     GAME_MODE_ACTIVE.store(true, Ordering::SeqCst);
     crate::utils::cleanup::register_tweak("game_mode");
+
+    // Sync with AI Game Mode state so both UI panels show the same status
+    if let Ok(mut status) = gm_state.0.lock() {
+        status.active = true;
+        if status.current_game.is_empty() {
+            status.current_game = "Rust".to_string();
+        }
+    }
 
     // 1. Kill bloatware
     let bloat_killed = kill_gaming_bloat();
@@ -350,9 +362,19 @@ pub fn activate_game_mode(state: State<'_, LicenseState>) -> Result<Vec<GameBoos
 
 /// Deactivate game mode
 #[tauri::command]
-pub fn deactivate_game_mode(state: State<'_, LicenseState>) -> Result<GameBoostResult, String> {
+pub fn deactivate_game_mode(
+    state:    State<'_, LicenseState>,
+    gm_state: State<'_, GameModeState>,
+) -> Result<GameBoostResult, String> {
     require_license(&state)?;
     GAME_MODE_ACTIVE.store(false, Ordering::SeqCst);
+
+    // Sync with AI Game Mode state
+    if let Ok(mut status) = gm_state.0.lock() {
+        status.active = false;
+        status.current_game = String::new();
+        status.current_pid  = 0;
+    }
 
     // Reset Rust priority to Normal if running
     let mut sys = System::new_all();
@@ -408,38 +430,68 @@ pub fn get_game_boost_status() -> Result<GameBoostStatus, String> {
 // Helpers
 // ═══════════════════════════════════════════════════════════════
 
-/// Find Rust game installation path
+/// Find Rust game installation path.
+/// Reads all Steam library folders from libraryfolders.vdf so
+/// Rust is found even when installed on a non-default drive.
 fn find_rust_path() -> Option<String> {
-    let common_paths = [
-        r"C:\Program Files (x86)\Steam\steamapps\common\Rust",
-        r"D:\Steam\steamapps\common\Rust",
-        r"D:\SteamLibrary\steamapps\common\Rust",
-        r"E:\Steam\steamapps\common\Rust",
-        r"E:\SteamLibrary\steamapps\common\Rust",
-        r"F:\Steam\steamapps\common\Rust",
-        r"F:\SteamLibrary\steamapps\common\Rust",
-    ];
-
-    for path in &common_paths {
-        if std::path::Path::new(path).exists() {
-            return Some(path.to_string());
+    for lib in steam_library_paths() {
+        let rust = format!(r"{}\steamapps\common\Rust", lib);
+        if std::path::Path::new(&rust).exists() {
+            return Some(rust);
         }
     }
+    None
+}
 
-    // Try to find via Steam registry key
-    use winreg::RegKey;
-    use winreg::enums::*;
+/// Returns all Steam library root paths parsed from libraryfolders.vdf.
+fn steam_library_paths() -> Vec<String> {
+    use winreg::{RegKey, enums::*};
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    if let Ok(steam_key) = hklm.open_subkey(r"SOFTWARE\WOW6432Node\Valve\Steam") {
-        if let Ok(path) = steam_key.get_value::<String, _>("InstallPath") {
-            let rust_path = format!(r"{}\steamapps\common\Rust", path);
-            if std::path::Path::new(&rust_path).exists() {
-                return Some(rust_path);
+
+    // Read Steam install path from registry (try 64-bit and 32-bit keys)
+    let steam_root = hklm
+        .open_subkey(r"SOFTWARE\WOW6432Node\Valve\Steam")
+        .or_else(|_| hklm.open_subkey(r"SOFTWARE\Valve\Steam"))
+        .and_then(|k| k.get_value::<String, _>("InstallPath"))
+        .unwrap_or_default();
+
+    let mut paths: Vec<String> = vec![steam_root.clone()];
+
+    // Parse libraryfolders.vdf for additional library locations
+    let vdf = format!(r"{}\steamapps\libraryfolders.vdf", steam_root);
+    if let Ok(content) = std::fs::read_to_string(&vdf) {
+        for line in content.lines() {
+            let line = line.trim();
+            // Match lines like:  "path"   "D:\\Games\\Steam"
+            // or old format:      "1"      "D:\\Games\\Steam"
+            if line.starts_with('"') {
+                let parts: Vec<&str> = line.splitn(4, '"').collect();
+                // parts: ["", key, whitespace, value]
+                if parts.len() >= 4 {
+                    let key = parts[1];
+                    let val = parts[3].replace("\\\\", "\\");
+                    if (key == "path" || key.parse::<u32>().is_ok()) && !val.is_empty() {
+                        paths.push(val);
+                    }
+                }
             }
         }
     }
 
-    None
+    // Also try common hardcoded fallback paths for systems without registry entry
+    let fallbacks = [
+        r"C:\Program Files (x86)\Steam",
+        r"D:\Steam", r"D:\SteamLibrary",
+        r"E:\Steam", r"E:\SteamLibrary",
+        r"F:\Steam", r"F:\SteamLibrary",
+    ];
+    for p in fallbacks {
+        if !paths.contains(&p.to_string()) {
+            paths.push(p.to_string());
+        }
+    }
+
+    paths
 }
 
 /// Get CPU affinity mask for performance cores

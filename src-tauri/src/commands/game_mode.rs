@@ -1,8 +1,10 @@
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::HashSet;
 use std::os::windows::process::CommandExt;
-use sysinfo::System;
+use sysinfo::{System, Pid};
 use tauri::State;
 use crate::utils::license_guard::{LicenseState, require_license};
 
@@ -54,6 +56,44 @@ impl Default for GameModeStatus {
 
 pub struct GameModeState(pub Mutex<GameModeStatus>);
 
+// ── Learning Engine Types ─────────────────────────────────────────────────────
+
+#[derive(Clone)]
+struct ProcSample {
+    name:    String,
+    cpu_pct: f32,
+}
+
+#[derive(Clone)]
+struct GameSample {
+    game_cpu: f32,
+    procs:    Vec<ProcSample>,
+}
+
+type SamplesBuffer = Arc<Mutex<Vec<GameSample>>>;
+
+pub struct LearningActive {
+    game_name: String,
+    game_pid:  u32,
+    samples:   SamplesBuffer,
+    stop:      Arc<AtomicBool>,
+}
+
+pub struct LearningState(pub Mutex<Option<LearningActive>>);
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HarmScore {
+    pub proc_name: String,
+    pub score:     f32,
+    pub sessions:  i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LearnResult {
+    pub updated:      usize,
+    pub new_kill_list: Vec<String>,
+}
+
 // ── Well-known game executables ───────────────────────────────────────────────
 
 const KNOWN_GAMES: &[&str] = &[
@@ -87,7 +127,7 @@ const PROTECTED: &[&str] = &[
     // Voice
     "Discord", "TeamSpeak3",
     // Our app
-    "RustOpti", "rustopti",
+    "NexOpti", "nexopti",
 ];
 
 // Processes to kill when a game is running (aggressive mode)
@@ -102,11 +142,149 @@ const BACKGROUND_KILLERS: &[&str] = &[
     "msedge",
 ];
 
+// ── Background Sampling Thread ────────────────────────────────────────────────
+
+fn sampling_thread(game_pid: u32, samples: SamplesBuffer, stop: Arc<AtomicBool>) {
+    loop {
+        if stop.load(Ordering::Relaxed) { break; }
+
+        let mut sys = System::new_all();
+        sys.refresh_all();
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        sys.refresh_all();
+
+        let game_cpu = sys.process(Pid::from_u32(game_pid))
+            .map(|p| p.cpu_usage())
+            .unwrap_or(0.0);
+
+        let procs: Vec<ProcSample> = sys.processes()
+            .values()
+            .filter(|p| p.pid().as_u32() != game_pid && p.cpu_usage() > 0.1)
+            .map(|p| ProcSample {
+                name:    p.name().to_string_lossy().trim_end_matches(".exe").to_string(),
+                cpu_pct: p.cpu_usage(),
+            })
+            .collect();
+
+        if let Ok(mut buf) = samples.lock() {
+            buf.push(GameSample { game_cpu, procs });
+        }
+
+        for _ in 0..50 {
+            if stop.load(Ordering::Relaxed) { return; }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+}
+
+// ── EMA Learning Algorithm ────────────────────────────────────────────────────
+
+fn learn_from_samples(game_name: &str, samples: &[GameSample], conn: &Connection) -> Result<LearnResult, String> {
+    if samples.len() < 3 {
+        return Ok(LearnResult { updated: 0, new_kill_list: vec![] });
+    }
+
+    let game_cpus: Vec<f32> = samples.iter().map(|s| s.game_cpu).collect();
+
+    // 90th percentile = baseline CPU for this game
+    let mut sorted = game_cpus.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let p90_idx = ((sorted.len() as f32 * 0.90) as usize).min(sorted.len() - 1);
+    let baseline = sorted[p90_idx];
+
+    if baseline < 1.0 {
+        return Ok(LearnResult { updated: 0, new_kill_list: vec![] });
+    }
+
+    // Drop event = game got < 75% of its normal CPU (likely frame drop)
+    let threshold = baseline * 0.75;
+    let drop_events: Vec<bool> = game_cpus.iter().map(|&c| c < threshold).collect();
+    let total_drops = drop_events.iter().filter(|&&d| d).count();
+
+    if total_drops == 0 {
+        return Ok(LearnResult { updated: 0, new_kill_list: vec![] });
+    }
+
+    let total_samples = samples.len();
+
+    // Collect all unique process names (exclude protected ones)
+    let all_procs: HashSet<String> = samples.iter()
+        .flat_map(|s| s.procs.iter().map(|p| p.name.clone()))
+        .filter(|n| !PROTECTED.iter().any(|p| p.eq_ignore_ascii_case(n)))
+        .collect();
+
+    let mut updated = 0usize;
+
+    for proc_name in &all_procs {
+        let mut present_total = 0usize;
+        let mut present_drop  = 0usize;
+
+        for (i, sample) in samples.iter().enumerate() {
+            let active = sample.procs.iter()
+                .any(|p| p.name.eq_ignore_ascii_case(proc_name) && p.cpu_pct > 0.3);
+            if active {
+                present_total += 1;
+                if drop_events[i] { present_drop += 1; }
+            }
+        }
+
+        if present_total == 0 { continue; }
+
+        let drop_rate = present_drop as f32 / total_drops as f32;
+        let base_rate = present_total as f32 / total_samples as f32;
+        let harm = (drop_rate - base_rate).clamp(-1.0, 1.0);
+
+        // EMA: 40% new info, 60% history (matches GameModeAI C# exactly)
+        let existing: Option<(f32, i64)> = conn.query_row(
+            "SELECT score, sessions FROM harm_scores WHERE game_name = ?1 AND proc_name = ?2",
+            params![game_name, proc_name],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).ok();
+
+        let (new_score, new_sessions) = match existing {
+            Some((old_score, old_sessions)) => (0.4 * harm + 0.6 * old_score, old_sessions + 1),
+            None => (harm, 1i64),
+        };
+
+        conn.execute(
+            "INSERT INTO harm_scores (game_name, proc_name, score, sessions)
+             VALUES (?1, ?2, ?3, 1)
+             ON CONFLICT(game_name, proc_name) DO UPDATE SET
+                 score = ?3, sessions = ?4",
+            params![game_name, proc_name, new_score, new_sessions],
+        ).map_err(|e| e.to_string())?;
+
+        updated += 1;
+    }
+
+    // Build new kill list: score >= 0.65 and seen in >= 2 sessions
+    let new_kill_list: Vec<String> = {
+        let mut stmt = conn.prepare(
+            "SELECT proc_name FROM harm_scores
+             WHERE game_name = ?1 AND score >= 0.65 AND sessions >= 2
+             ORDER BY score DESC"
+        ).map_err(|e| e.to_string())?;
+
+        stmt.query_map(params![game_name], |row| row.get(0))
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect()
+    };
+
+    // Persist updated kill list to profile
+    conn.execute(
+        "UPDATE game_profiles SET kill_list = ?1 WHERE game_name = ?2",
+        params![new_kill_list.join(", "), game_name],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(LearnResult { updated, new_kill_list })
+}
+
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
 fn db_path() -> String {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-    format!("{}\\RustOpti\\gamemode.db", appdata)
+    format!("{}\\NexOpti\\gamemode.db", appdata)
 }
 
 fn open_db() -> Result<Connection, String> {
@@ -167,12 +345,13 @@ pub fn detect_running_game(license: State<'_, LicenseState>) -> Result<(String, 
 }
 
 /// Activate Game Mode for a specific game PID.
-/// Kills background processes and boosts game priority.
+/// Kills background processes, boosts game priority, and starts AI sampling.
 #[tauri::command]
 pub fn ai_activate_game_mode(
     game_name: String,
     game_pid:  u32,
     state:     State<'_, GameModeState>,
+    learning:  State<'_, LearningState>,
     license:   State<'_, LicenseState>,
 ) -> Result<GameModeStatus, String> {
     require_license(&license)?;
@@ -268,6 +447,24 @@ pub fn ai_activate_game_mode(
         *status = new_status.clone();
     }
 
+    // Start AI learning: sample processes every 5s in background thread
+    {
+        let mut learn = learning.0.lock().map_err(|e| e.to_string())?;
+        let samples_buf: SamplesBuffer = Arc::new(Mutex::new(Vec::new()));
+        let stop_flag = Arc::new(AtomicBool::new(false));
+
+        let samples_clone = Arc::clone(&samples_buf);
+        let stop_clone    = Arc::clone(&stop_flag);
+        std::thread::spawn(move || sampling_thread(game_pid, samples_clone, stop_clone));
+
+        *learn = Some(LearningActive {
+            game_name: game_name.clone(),
+            game_pid,
+            samples: samples_buf,
+            stop: stop_flag,
+        });
+    }
+
     // Log to sessions table (outside mutex)
     conn.execute(
         "INSERT INTO sessions (game_name, start_time, processes_killed, ram_freed_mb, killed_names)
@@ -278,30 +475,57 @@ pub fn ai_activate_game_mode(
     Ok(new_status)
 }
 
-/// Deactivate Game Mode — record session duration.
+/// Deactivate Game Mode — record session duration and run AI learning.
 #[tauri::command]
-pub fn ai_deactivate_game_mode(state: State<'_, GameModeState>, license: State<'_, LicenseState>) -> Result<String, String> {
+pub fn ai_deactivate_game_mode(
+    state:    State<'_, GameModeState>,
+    learning: State<'_, LearningState>,
+    license:  State<'_, LicenseState>,
+) -> Result<String, String> {
     require_license(&license)?;
-    let mut status = state.0.lock().map_err(|e| e.to_string())?;
-    if !status.active {
-        return Ok("Game Mode was not active".to_string());
-    }
+
+    let game_name = {
+        let mut status = state.0.lock().map_err(|e| e.to_string())?;
+        if !status.active {
+            return Ok("Game Mode was not active".to_string());
+        }
+        let name = status.current_game.clone();
+        *status = GameModeStatus::default();
+        name
+    };
 
     let conn = open_db()?;
     ensure_tables(&conn)?;
 
-    // Update duration of last session for this game (subquery avoids ORDER BY/LIMIT restriction)
+    // Record session duration
     conn.execute(
         "UPDATE sessions SET duration_secs =
             CAST((julianday('now') - julianday(start_time)) * 86400 AS INTEGER)
          WHERE id = (SELECT id FROM sessions WHERE game_name = ?1 AND duration_secs IS NULL ORDER BY id DESC LIMIT 1)",
-        params![status.current_game],
+        params![game_name],
     ).map_err(|e| e.to_string())?;
 
-    let game = status.current_game.clone();
-    *status = GameModeStatus::default();
+    // Stop sampling thread and collect samples
+    let samples_snapshot: Vec<GameSample> = {
+        let mut learn = learning.0.lock().map_err(|e| e.to_string())?;
+        if let Some(active) = learn.take() {
+            active.stop.store(true, Ordering::Relaxed);
+            active.samples.lock().map(|s| s.clone()).unwrap_or_default()
+        } else {
+            vec![]
+        }
+    };
 
-    Ok(format!("Game Mode deactivated for {}", game))
+    // Run EMA learning algorithm
+    let result = learn_from_samples(&game_name, &samples_snapshot, &conn)?;
+
+    Ok(format!(
+        "Game Mode deactivated for {} | Samples: {} | Updated scores: {} | Kill list: {} procs",
+        game_name,
+        samples_snapshot.len(),
+        result.updated,
+        result.new_kill_list.len()
+    ))
 }
 
 /// Get current Game Mode status.
@@ -404,4 +628,48 @@ pub fn add_to_kill_list(game_name: String, proc_name: String, license: State<'_,
 #[tauri::command]
 pub fn get_known_games() -> Vec<String> {
     KNOWN_GAMES.iter().map(|s| s.to_string()).collect()
+}
+
+/// Get harm scores for a game (for UI display of what AI learned).
+#[tauri::command]
+pub fn get_harm_scores(game_name: String, license: State<'_, LicenseState>) -> Result<Vec<HarmScore>, String> {
+    require_license(&license)?;
+    let conn = open_db()?;
+    ensure_tables(&conn)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT proc_name, score, sessions FROM harm_scores
+         WHERE game_name = ?1 ORDER BY score DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let scores = stmt.query_map(params![game_name], |row| {
+        Ok(HarmScore {
+            proc_name: row.get(0)?,
+            score:     row.get(1)?,
+            sessions:  row.get(2)?,
+        })
+    })
+    .map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    Ok(scores)
+}
+
+/// Get current sampling status (how many samples collected this session).
+#[tauri::command]
+pub fn get_learning_status(learning: State<'_, LearningState>) -> serde_json::Value {
+    let learn = learning.0.lock().unwrap();
+    match &*learn {
+        None => serde_json::json!({ "active": false, "samples": 0, "game": "" }),
+        Some(active) => {
+            let count = active.samples.lock().map(|s| s.len()).unwrap_or(0);
+            serde_json::json!({
+                "active": true,
+                "samples": count,
+                "game": active.game_name,
+                "pid": active.game_pid,
+            })
+        }
+    }
 }

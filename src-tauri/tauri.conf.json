@@ -1,5 +1,5 @@
 {
-  "productName": "RustOpti",
+  "productName": "NexOpti",
   "version": "2.2.22",
   "identifier": "com.rustopti.app",
   "build": {
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "RustOpti",
+        "title": "NexOpti",
         "width": 1200,
         "height": 800,
         "resizable": true,

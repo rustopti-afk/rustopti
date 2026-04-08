@@ -11,6 +11,7 @@ use std::process::Command;
 use std::os::windows::process::CommandExt;
 use winreg::RegKey;
 use winreg::enums::*;
+use serde_json;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -98,29 +99,26 @@ fn is_subscription_valid() -> bool {
 
     let hwid = get_hwid();
 
-    // Call API to validate
-    let ps_cmd = format!(
-        r#"try {{
-            $r = Invoke-RestMethod -Uri '{url}' -Method Post -Body ('{{"key":"{key}","hwid":"{hwid}"}}') -ContentType 'application/json' -TimeoutSec 15
-            if ($r.success) {{ Write-Output 'VALID' }} else {{ Write-Output 'INVALID' }}
-        }} catch {{ Write-Output 'ERROR' }}"#,
-        url = API_URL,
-        key = key,
-        hwid = hwid,
-    );
+    // Call API directly with reqwest (no PowerShell dependency)
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return true, // client build failed = keep active
+    };
 
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &ps_cmd])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+    let body = serde_json::json!({ "key": key, "hwid": hwid });
 
-    match output {
-        Ok(o) => {
-            let stdout = String::from_utf8_lossy(&o.stdout).trim().to_string();
-            // On network error — don't revoke (grace period)
-            stdout != "INVALID"
+    match client.post(API_URL).json(&body).send() {
+        Ok(resp) => {
+            // Parse JSON response — if success=true → valid
+            match resp.json::<serde_json::Value>() {
+                Ok(json) => json.get("success").and_then(|v| v.as_bool()).unwrap_or(false),
+                Err(_) => true, // parse error = treat as network issue, keep active
+            }
         }
-        Err(_) => true, // network unavailable = keep active
+        Err(_) => true, // network unavailable = grace period, keep active
     }
 }
 
@@ -131,21 +129,42 @@ fn read_cached_key() -> Option<String> {
     if val.is_empty() { None } else { Some(val) }
 }
 
+// Must match exactly the logic in src-tauri/src/utils/hwid.rs
+const HWID_SALT: &str = "RustOpti-HWID-v2";
+
 fn get_hwid() -> String {
-    let output = Command::new("wmic")
-        .args(["csproduct", "get", "UUID", "/value"])
+    use sha2::{Sha256, Digest};
+
+    let cpuid    = get_ps_value("(Get-CimInstance Win32_Processor).ProcessorId");
+    let baseboard = get_ps_value("(Get-CimInstance Win32_BaseBoard).SerialNumber");
+    let disk     = get_ps_value("(Get-CimInstance Win32_DiskDrive | Select-Object -First 1).SerialNumber");
+
+    let combined = format!("{}{}{}", cpuid, baseboard, disk);
+    let clean: String = combined.chars().filter(|c| !c.is_whitespace()).collect();
+
+    let seed = if clean.is_empty() {
+        let username     = std::env::var("USERNAME").unwrap_or_else(|_| "user".to_string());
+        let computername = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "pc".to_string());
+        format!("FALLBACK-{}-{}", username, computername)
+    } else {
+        clean
+    };
+
+    let mut hasher = Sha256::new();
+    hasher.update(HWID_SALT.as_bytes());
+    hasher.update(seed.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+fn get_ps_value(query: &str) -> String {
+    Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", query])
         .creation_flags(CREATE_NO_WINDOW)
         .output()
-        .ok();
-
-    output
-        .and_then(|o| {
-            let s = String::from_utf8_lossy(&o.stdout).to_string();
-            s.lines()
-                .find(|l| l.starts_with("UUID="))
-                .map(|l| l.trim_start_matches("UUID=").trim().to_string())
-        })
-        .unwrap_or_else(|| "unknown-hwid".to_string())
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
 }
 
 // ── Revert tweaks ─────────────────────────────────────────────

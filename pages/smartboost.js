@@ -26,8 +26,8 @@ const CATEGORY_ICON = {
 export async function renderSmartBoost(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 class="page-title neon-pulse">⚡ Smart Boost</h2>
-      <p class="page-subtitle">Аналіз твого ПК та підбір найкращих налаштувань</p>
+      <h2 class="page-title neon-pulse">🤖 AI Аналіз</h2>
+      <p class="page-subtitle">ШІ сканує твій ПК і автоматично підбирає найкращий профіль</p>
     </div>
 
     <!-- Scan button -->
