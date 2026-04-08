@@ -22,34 +22,43 @@ pub struct GameProfile {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SessionRecord {
-    pub id:              i64,
-    pub game_name:       String,
-    pub start_time:      String,
-    pub duration_secs:   i64,
+    pub id:               i64,
+    pub game_name:        String,
+    pub start_time:       String,
+    pub duration_secs:    i64,
     pub processes_killed: i64,
-    pub ram_freed_mb:    i64,
-    pub killed_names:    String,
+    pub ram_freed_mb:     i64,
+    pub killed_names:     String,
+    pub gpu_before:       f64,
+    pub gpu_after:        f64,
+    pub boost_pct:        f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GameModeStatus {
-    pub active:          bool,
-    pub current_game:    String,
-    pub current_pid:     u32,
+    pub active:           bool,
+    pub current_game:     String,
+    pub current_pid:      u32,
     pub processes_killed: u32,
-    pub ram_freed_mb:    u64,
-    pub start_time:      String,
+    pub ram_freed_mb:     u64,
+    pub start_time:       String,
+    pub gpu_before:       f64,
+    pub gpu_after:        f64,
+    pub boost_pct:        f64,
 }
 
 impl Default for GameModeStatus {
     fn default() -> Self {
         Self {
-            active:          false,
-            current_game:    String::new(),
-            current_pid:     0,
+            active:           false,
+            current_game:     String::new(),
+            current_pid:      0,
             processes_killed: 0,
-            ram_freed_mb:    0,
-            start_time:      String::new(),
+            ram_freed_mb:     0,
+            start_time:       String::new(),
+            gpu_before:       0.0,
+            gpu_after:        0.0,
+            boost_pct:        0.0,
         }
     }
 }
@@ -292,7 +301,9 @@ fn open_db() -> Result<Connection, String> {
     if let Some(parent) = std::path::Path::new(&path).parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    Connection::open(&path).map_err(|e| e.to_string())
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    migrate_sessions(&conn);
+    Ok(conn)
 }
 
 fn ensure_tables(conn: &Connection) -> Result<(), String> {
@@ -311,7 +322,10 @@ fn ensure_tables(conn: &Connection) -> Result<(), String> {
             duration_secs    INTEGER,
             processes_killed INTEGER DEFAULT 0,
             ram_freed_mb     INTEGER DEFAULT 0,
-            killed_names     TEXT DEFAULT ''
+            killed_names     TEXT DEFAULT '',
+            gpu_before       REAL DEFAULT 0,
+            gpu_after        REAL DEFAULT 0,
+            boost_pct        REAL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS harm_scores (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -322,6 +336,45 @@ fn ensure_tables(conn: &Connection) -> Result<(), String> {
             UNIQUE(game_name, proc_name)
         );
     ").map_err(|e| e.to_string())
+}
+
+fn migrate_sessions(conn: &Connection) {
+    let _ = conn.execute_batch("
+        ALTER TABLE sessions ADD COLUMN gpu_before REAL DEFAULT 0;
+        ALTER TABLE sessions ADD COLUMN gpu_after  REAL DEFAULT 0;
+        ALTER TABLE sessions ADD COLUMN boost_pct  REAL DEFAULT 0;
+    ");
+}
+
+/// Measure GPU 3D utilization % for a given PID using PowerShell PDH counters.
+/// Samples for ~3 seconds. Returns 0.0 on error.
+fn measure_gpu_util(game_pid: u32) -> f64 {
+    let script = format!(
+        r#"try {{
+            $c = (Get-Counter '\GPU Engine(*engtype_3D)\Utilization Percentage' `
+                -SampleInterval 1 -MaxSamples 3 -ErrorAction SilentlyContinue).CounterSamples
+            $pid_samples = $c | Where-Object {{ $_.Path -like '*pid_{pid}*' }}
+            if ($pid_samples) {{
+                [math]::Round(($pid_samples | Measure-Object -Property CookedValue -Average).Average, 2)
+            }} else {{
+                [math]::Round(($c | Measure-Object -Property CookedValue -Average).Average, 2)
+            }}
+        }} catch {{ 0 }}"#,
+        pid = game_pid
+    );
+
+    let out = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", &script])
+        .creation_flags(0x08000000)
+        .output();
+
+    match out {
+        Ok(o) => String::from_utf8_lossy(&o.stdout)
+            .trim()
+            .parse::<f64>()
+            .unwrap_or(0.0),
+        Err(_) => 0.0,
+    }
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
@@ -383,6 +436,9 @@ pub fn ai_activate_game_mode(
     let mut all_kills: Vec<String> = BACKGROUND_KILLERS.iter().map(|s| s.to_string()).collect();
     all_kills.extend(extra_kills);
 
+    // Measure GPU utilization BEFORE killing (baseline)
+    let gpu_before = measure_gpu_util(game_pid);
+
     // Heavy work (System::new_all + process killing) done outside mutex
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -417,6 +473,16 @@ pub fn ai_activate_game_mode(
         .creation_flags(0x08000000)
         .spawn();
 
+    // Wait for freed resources to be claimed by game, then measure GPU after
+    std::thread::sleep(std::time::Duration::from_secs(3));
+    let gpu_after = measure_gpu_util(game_pid);
+
+    let boost_pct = if gpu_before > 1.0 {
+        ((gpu_after - gpu_before) / gpu_before * 100.0 * 10.0).round() / 10.0
+    } else {
+        0.0
+    };
+
     // Upsert profile
     conn.execute(
         "INSERT INTO game_profiles (game_name, session_count, last_seen)
@@ -436,6 +502,9 @@ pub fn ai_activate_game_mode(
         processes_killed: killed,
         ram_freed_mb:     ram_freed,
         start_time:       now,
+        gpu_before,
+        gpu_after,
+        boost_pct,
     };
 
     // Re-acquire mutex to write final status (short critical section)
@@ -467,9 +536,9 @@ pub fn ai_activate_game_mode(
 
     // Log to sessions table (outside mutex)
     conn.execute(
-        "INSERT INTO sessions (game_name, start_time, processes_killed, ram_freed_mb, killed_names)
-         VALUES (?1, datetime('now'), ?2, ?3, ?4)",
-        params![game_name, killed, ram_freed as i64, killed_names.join(", ")],
+        "INSERT INTO sessions (game_name, start_time, processes_killed, ram_freed_mb, killed_names, gpu_before, gpu_after, boost_pct)
+         VALUES (?1, datetime('now'), ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![game_name, killed, ram_freed as i64, killed_names.join(", "), gpu_before, gpu_after, boost_pct],
     ).map_err(|e| e.to_string())?;
 
     Ok(new_status)
@@ -571,7 +640,8 @@ pub fn get_game_sessions(limit: i64, license: State<'_, LicenseState>) -> Result
 
     let mut stmt = conn.prepare(
         "SELECT id, game_name, start_time, COALESCE(duration_secs,0),
-                processes_killed, ram_freed_mb, killed_names
+                processes_killed, ram_freed_mb, killed_names,
+                COALESCE(gpu_before,0), COALESCE(gpu_after,0), COALESCE(boost_pct,0)
          FROM sessions ORDER BY id DESC LIMIT ?1"
     ).map_err(|e| e.to_string())?;
 
@@ -584,6 +654,9 @@ pub fn get_game_sessions(limit: i64, license: State<'_, LicenseState>) -> Result
             processes_killed: row.get(4)?,
             ram_freed_mb:     row.get(5)?,
             killed_names:     row.get::<_, Option<String>>(6)?.unwrap_or_default(),
+            gpu_before:       row.get(7)?,
+            gpu_after:        row.get(8)?,
+            boost_pct:        row.get(9)?,
         })
     })
     .map_err(|e| e.to_string())?

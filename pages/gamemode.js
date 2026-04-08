@@ -47,6 +47,26 @@ export async function renderGameMode(container) {
           <span class="gm-stat-val" id="gm-samples" style="color:#a78bfa">0</span>
           <span class="gm-stat-label">семплів AI</span>
         </div>
+        <div class="gm-stat" id="gm-boost-stat" style="display:none">
+          <span class="gm-stat-val" id="gm-boost" style="color:#4ade80">+0%</span>
+          <span class="gm-stat-label">GPU буст</span>
+        </div>
+      </div>
+
+      <!-- GPU measurement bar -->
+      <div id="gm-gpu-bar" style="display:none;margin-top:14px">
+        <div style="font-size:11px;color:var(--text-4);margin-bottom:6px">GPU 3D навантаження</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:var(--text-3);width:40px" id="gm-gpu-before-lbl">0%</span>
+          <div style="flex:1;height:6px;background:var(--bg-3);border-radius:3px;position:relative">
+            <div id="gm-gpu-before-bar" style="position:absolute;left:0;top:0;height:100%;background:#6b7280;border-radius:3px;transition:width 0.5s"></div>
+            <div id="gm-gpu-after-bar" style="position:absolute;left:0;top:0;height:100%;background:#4ade80;border-radius:3px;opacity:0.7;transition:width 0.5s"></div>
+          </div>
+          <span style="font-size:11px;color:#4ade80;width:40px;text-align:right" id="gm-gpu-after-lbl">0%</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-4);margin-top:3px">
+          До оптимізації (сіре) → Після (зелене)
+        </div>
       </div>
     </div>
 
@@ -179,7 +199,10 @@ async function activate(gameName, pid) {
       gameName, gamePid: pid
     });
     setActiveUI(status);
-    logSuccess(`Game Mode activated for ${gameName} — killed ${status.processes_killed} processes, freed ${status.ram_freed_mb}MB`);
+    const boostStr = status.boost_pct !== 0
+      ? ` | GPU: ${status.gpu_before.toFixed(1)}% → ${status.gpu_after.toFixed(1)}% (${status.boost_pct >= 0 ? '+' : ''}${status.boost_pct.toFixed(1)}%)`
+      : '';
+    logSuccess(`Game Mode activated for ${gameName} — killed ${status.processes_killed} processes, freed ${status.ram_freed_mb}MB${boostStr}`);
     document.getElementById('gm-btn-deactivate').disabled = false;
   } catch (e) {
     logError(`Game Mode activation failed: ${e}`);
@@ -233,6 +256,29 @@ function setActiveUI(status) {
   document.getElementById('gm-killed').textContent = status.processes_killed;
   document.getElementById('gm-ram').textContent    = status.ram_freed_mb;
   if (stats) stats.style.display = 'flex';
+
+  // GPU boost display
+  if (status.gpu_before > 0 || status.gpu_after > 0) {
+    const boostStat = document.getElementById('gm-boost-stat');
+    const gpuBar    = document.getElementById('gm-gpu-bar');
+    if (boostStat) boostStat.style.display = '';
+    if (gpuBar)    gpuBar.style.display = '';
+
+    const boostEl = document.getElementById('gm-boost');
+    if (boostEl) {
+      const sign = status.boost_pct >= 0 ? '+' : '';
+      boostEl.textContent = `${sign}${status.boost_pct.toFixed(1)}%`;
+      boostEl.style.color = status.boost_pct >= 0 ? '#4ade80' : '#f87171';
+    }
+
+    const beforePct = Math.min(status.gpu_before, 100).toFixed(1);
+    const afterPct  = Math.min(status.gpu_after, 100).toFixed(1);
+    const el = (id) => document.getElementById(id);
+    if (el('gm-gpu-before-lbl')) el('gm-gpu-before-lbl').textContent = `${beforePct}%`;
+    if (el('gm-gpu-after-lbl'))  el('gm-gpu-after-lbl').textContent  = `${afterPct}%`;
+    if (el('gm-gpu-before-bar')) el('gm-gpu-before-bar').style.width = `${beforePct}%`;
+    if (el('gm-gpu-after-bar'))  el('gm-gpu-after-bar').style.width  = `${afterPct}%`;
+  }
 
   document.getElementById('gm-btn-deactivate').disabled = false;
 
@@ -369,18 +415,23 @@ async function loadSessions() {
       <table class="process-table" style="width:100%">
         <thead><tr>
           <th>Гра</th><th>Дата</th><th>Тривалість</th>
-          <th>Вбито</th><th>RAM</th>
+          <th>Вбито</th><th>RAM</th><th>GPU буст</th>
         </tr></thead>
         <tbody>
-          ${sessions.map(s => `
-            <tr>
+          ${sessions.map(s => {
+            const boostColor = s.boost_pct > 0 ? '#4ade80' : s.boost_pct < 0 ? '#f87171' : 'var(--text-4)';
+            const boostText = s.gpu_before > 0
+              ? `<span style="color:${boostColor}">${s.boost_pct >= 0 ? '+' : ''}${s.boost_pct.toFixed(1)}%</span><span style="color:var(--text-4);font-size:10px"> (${s.gpu_before.toFixed(0)}%→${s.gpu_after.toFixed(0)}%)</span>`
+              : '<span style="color:var(--text-4)">—</span>';
+            return `<tr>
               <td style="color:var(--text-1)">${escHtml(s.game_name)}</td>
               <td>${escHtml(s.start_time.slice(0,16))}</td>
               <td>${formatDuration(s.duration_secs)}</td>
               <td style="color:var(--danger)">${s.processes_killed}</td>
               <td style="color:var(--success)">${s.ram_freed_mb} MB</td>
-            </tr>
-          `).join('')}
+              <td>${boostText}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     `;
