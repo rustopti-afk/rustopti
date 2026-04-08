@@ -60,6 +60,50 @@ export async function renderDashboard(container) {
       </div>
     </div>
 
+    <!-- AI Analysis panel (auto-loads) -->
+    <div class="ai-panel card-enter" id="ai-panel" style="margin-bottom:24px">
+      <div class="ai-panel-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">🤖</span>
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--text-1)">AI Аналіз ПК</div>
+            <div style="font-size:11px;color:var(--text-3)" id="ai-subtitle">Сканування...</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="ai-score-badge" style="display:none">
+            <span id="ai-score-num" style="font-size:28px;font-weight:800;line-height:1">—</span>
+            <span style="font-size:12px;color:var(--text-3)">/100</span>
+          </div>
+          <button class="btn btn-ripple" id="ai-btn-rescan" style="font-size:11px;padding:4px 10px">
+            🔄 Оновити
+          </button>
+        </div>
+      </div>
+
+      <!-- Score bar -->
+      <div id="ai-score-bar-wrap" style="display:none;margin:10px 0 14px">
+        <div style="height:4px;background:var(--border);border-radius:2px">
+          <div id="ai-score-bar" style="height:100%;border-radius:2px;transition:width 1s ease;width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Recommendations list (compact) -->
+      <div id="ai-recs-list">
+        <div class="ai-loading">
+          <div class="ai-spinner"></div>
+          <span>Аналізуємо CPU, RAM, GPU, диск...</span>
+        </div>
+      </div>
+
+      <!-- Apply all -->
+      <div id="ai-apply-all-row" style="display:none;margin-top:12px;display:none;justify-content:flex-end">
+        <button class="btn btn-primary btn-ripple" id="ai-btn-apply-all" style="font-size:12px">
+          ✅ Застосувати всі безпечні
+        </button>
+      </div>
+    </div>
+
     <!-- Instant vs reboot tweaks -->
     <div class="tweaks-split">
       <div class="tweaks-group">
@@ -325,4 +369,144 @@ export async function renderDashboard(container) {
       logError(`Failed: ${e}`);
     }
   });
+
+  // Auto-run AI scan on dashboard load (only in Tauri)
+  if (window.__TAURI_INTERNALS__) {
+    runAiScan();
+    document.getElementById('ai-btn-rescan')?.addEventListener('click', runAiScan);
+  } else {
+    document.getElementById('ai-panel').style.display = 'none';
+  }
+}
+
+// ── AI Panel ──────────────────────────────────────────────────────────────────
+
+const AI_PRIORITY_COLOR = { critical:'#f87171', high:'#fbbf24', medium:'#a0a0a0', low:'#606060' };
+const AI_PRIORITY_ICON  = { critical:'🔴', high:'🟡', medium:'⚪', low:'⚫' };
+const AI_CAT_ICON = { ram:'💾', cpu:'⚡', gpu:'🎮', disk:'💿', power:'🔋', system:'🖥', process:'🔪' };
+
+let _aiRecs = [];
+
+async function runAiScan() {
+  const list    = document.getElementById('ai-recs-list');
+  const subtitle = document.getElementById('ai-subtitle');
+  const scoreBadge = document.getElementById('ai-score-badge');
+  const scoreBar   = document.getElementById('ai-score-bar-wrap');
+  const applyRow   = document.getElementById('ai-apply-all-row');
+  const rescanBtn  = document.getElementById('ai-btn-rescan');
+
+  if (!list) return;
+
+  if (rescanBtn) { rescanBtn.disabled = true; rescanBtn.textContent = '⏳'; }
+  if (subtitle) subtitle.textContent = 'Сканування...';
+  if (scoreBadge) scoreBadge.style.display = 'none';
+  if (scoreBar) scoreBar.style.display = 'none';
+  if (applyRow) applyRow.style.display = 'none';
+
+  list.innerHTML = `<div class="ai-loading"><div class="ai-spinner"></div><span>Аналізуємо CPU, RAM, GPU, диск...</span></div>`;
+
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const result = await invoke('smart_analyze');
+    _aiRecs = result.recommendations || [];
+    renderAiResults(result);
+    logInfo(`AI: score ${result.score}/100, ${_aiRecs.length} рекомендацій`);
+  } catch (e) {
+    list.innerHTML = `<div style="color:var(--text-3);font-size:13px;padding:12px 0">Не вдалося запустити аналіз: ${e}</div>`;
+  } finally {
+    if (rescanBtn) { rescanBtn.disabled = false; rescanBtn.textContent = '🔄 Оновити'; }
+  }
+}
+
+function renderAiResults(result) {
+  const score = result.score ?? 0;
+  const recs  = result.recommendations ?? [];
+
+  // Score
+  const scoreNum = document.getElementById('ai-score-num');
+  const scoreBadge = document.getElementById('ai-score-badge');
+  const scoreBar   = document.getElementById('ai-score-bar');
+  const scoreBarWrap = document.getElementById('ai-score-bar-wrap');
+  const subtitle   = document.getElementById('ai-subtitle');
+
+  const color = score >= 75 ? 'var(--success)' : score >= 50 ? '#fbbf24' : '#f87171';
+  if (scoreNum)   { scoreNum.textContent = score; scoreNum.style.color = color; }
+  if (scoreBadge) scoreBadge.style.display = 'flex';
+  if (scoreBar)   { scoreBar.style.width = score + '%'; scoreBar.style.background = color; }
+  if (scoreBarWrap) scoreBarWrap.style.display = 'block';
+  if (subtitle) {
+    const critical = recs.filter(r => r.priority === 'critical').length;
+    const high     = recs.filter(r => r.priority === 'high').length;
+    subtitle.textContent = critical
+      ? `${critical} критичних проблем · ${high} важливих`
+      : high
+      ? `${high} важливих покращень`
+      : recs.length ? `${recs.length} рекомендацій` : 'Система оптимізована ✓';
+  }
+
+  // Render recs (show all, sorted by priority)
+  const order = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sorted = [...recs].sort((a, b) => (order[a.priority] ?? 4) - (order[b.priority] ?? 4));
+
+  const list = document.getElementById('ai-recs-list');
+  if (!list) return;
+
+  if (!sorted.length) {
+    list.innerHTML = `<div style="color:var(--success);font-size:13px;padding:12px 0;text-align:center">
+      ✅ Система оптимізована! Рекомендацій немає.
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(rec => `
+    <div class="ai-rec-row" id="ai-rec-${rec.id}">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <span style="font-size:16px;flex-shrink:0">${AI_CAT_ICON[rec.category] || '⚙️'}</span>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            <span style="color:${AI_PRIORITY_COLOR[rec.priority]};margin-right:5px">${AI_PRIORITY_ICON[rec.priority]}</span>${rec.title}
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rec.reason}</div>
+        </div>
+      </div>
+      <button class="ai-apply-btn btn btn-ripple"
+              data-id="${rec.id}"
+              style="font-size:11px;padding:3px 10px;flex-shrink:0;margin-left:8px">
+        Виправити
+      </button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.ai-apply-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const origText = btn.textContent;
+      btn.disabled = true; btn.textContent = '⏳';
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const msg = await invoke('apply_recommendation', { id });
+        logSuccess(msg);
+        btn.textContent = '✅';
+        btn.style.color = 'var(--success)';
+        const row = document.getElementById(`ai-rec-${id}`);
+        if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }
+      } catch (e) {
+        logError(`Failed: ${e}`);
+        btn.disabled = false; btn.textContent = origText;
+      }
+    });
+  });
+
+  const applyRow = document.getElementById('ai-apply-all-row');
+  if (applyRow && sorted.length) {
+    applyRow.style.display = 'flex';
+    document.getElementById('ai-btn-apply-all')?.addEventListener('click', async () => {
+      const safe = _aiRecs.filter(r => r.safe && !r.applied);
+      for (const rec of safe) {
+        const btn = document.querySelector(`[data-id="${rec.id}"]`);
+        if (btn && !btn.disabled) btn.click();
+        await new Promise(r => setTimeout(r, 300));
+      }
+    });
+  }
 }
