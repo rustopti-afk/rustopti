@@ -4,6 +4,7 @@ pub mod utils;
 use commands::*;
 use utils::license_guard::LicenseState;
 use commands::game_mode::{GameModeState, LearningState};
+use commands::adaptive::AdaptiveState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -20,6 +21,7 @@ pub fn run() {
         .manage(LicenseState::new())
         .manage(GameModeState(std::sync::Mutex::new(game_mode::GameModeStatus::default())))
         .manage(LearningState(std::sync::Mutex::new(None)))
+        .manage(AdaptiveState::default())
         .invoke_handler(tauri::generate_handler![
             // System Info
             system_info::get_system_info,
@@ -133,6 +135,12 @@ pub fn run() {
             game_mode::get_known_games,
             game_mode::get_harm_scores,
             game_mode::get_learning_status,
+            // Adaptive FPS Tuner
+            adaptive::start_adaptive_session,
+            adaptive::stop_adaptive_session,
+            adaptive::get_adaptive_status,
+            adaptive::get_adaptive_profile,
+            adaptive::apply_adaptive_profile,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

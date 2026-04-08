@@ -20,3 +20,4 @@ pub mod service;
 pub mod visual_profile;
 pub mod game_mode;
 pub mod smart_boost;
+pub mod adaptive;
