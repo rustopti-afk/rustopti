@@ -199,6 +199,44 @@ body::after {
   font-weight: 700;
 }
 
+/* AI section label */
+.nav-section-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 1.4px; font-weight: 700;
+  color: var(--text-4);
+  margin: 8px 0 4px 12px;
+}
+
+/* AI nav items — accent highlight */
+.nav-item.nav-ai {
+  color: var(--text-2);
+  position: relative;
+}
+.nav-item.nav-ai::after {
+  content: 'AI';
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-bright);
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.nav-item.nav-ai:hover {
+  background: rgba(99,102,241,0.08);
+  color: var(--text-1);
+}
+.nav-item.nav-ai.active {
+  background: rgba(99,102,241,0.12);
+  color: var(--accent-bright);
+  border-left: 2px solid var(--accent-bright);
+}
+.nav-item.nav-ai.active::before {
+  background: var(--accent-bright);
+}
+
 /* Sidebar bottom */
 .nav-menu > div:last-child {
   padding: 12px 8px; margin-top: auto;
