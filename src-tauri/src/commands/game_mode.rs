@@ -267,18 +267,17 @@ fn learn_from_samples(game_name: &str, samples: &[GameSample], conn: &Connection
     }
 
     // Build new kill list: score >= 0.65 and seen in >= 2 sessions
-    let new_kill_list: Vec<String> = {
-        let mut stmt = conn.prepare(
-            "SELECT proc_name FROM harm_scores
-             WHERE game_name = ?1 AND score >= 0.65 AND sessions >= 2
-             ORDER BY score DESC"
-        ).map_err(|e| e.to_string())?;
+    let mut kill_stmt = conn.prepare(
+        "SELECT proc_name FROM harm_scores
+         WHERE game_name = ?1 AND score >= 0.65 AND sessions >= 2
+         ORDER BY score DESC"
+    ).map_err(|e| e.to_string())?;
 
-        stmt.query_map(params![game_name], |row| row.get(0))
-            .map_err(|e| e.to_string())?
-            .filter_map(|r| r.ok())
-            .collect()
-    };
+    let new_kill_list: Vec<String> = kill_stmt
+        .query_map(params![game_name], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
 
     // Persist updated kill list to profile
     conn.execute(
