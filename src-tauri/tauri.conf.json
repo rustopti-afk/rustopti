@@ -1,6 +1,6 @@
 {
   "productName": "NexOpti",
-  "version": "2.2.27",
+  "version": "2.2.28",
   "identifier": "com.rustopti.app",
   "build": {
     "frontendDist": "../dist",
