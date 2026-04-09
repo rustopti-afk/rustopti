@@ -53,6 +53,19 @@ const SCAN_STEPS = [
 let currentResult = null;
 let scanStepTimer = null;
 
+const APPLIED_KEY = 'sb_applied_ids';
+
+function getAppliedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(APPLIED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+
+function saveAppliedId(id) {
+  const ids = getAppliedIds();
+  ids.add(id);
+  localStorage.setItem(APPLIED_KEY, JSON.stringify([...ids]));
+}
+
 export async function renderSmartBoost(container) {
   container.innerHTML = `
     <div class="page-header">
@@ -72,6 +85,11 @@ async function runScan() {
   try {
     logInfo('Smart Boost: scanning PC...');
     const result = await invoke('smart_analyze');
+    // Merge localStorage applied state with backend result
+    const appliedIds = getAppliedIds();
+    result.recommendations.forEach(r => {
+      if (appliedIds.has(r.id)) r.applied = true;
+    });
     currentResult = result;
     clearScanAnimation();
     renderResults(result);
@@ -325,6 +343,7 @@ async function applySingle(id, btn) {
   try {
     const msg = await invoke('apply_recommendation', { id });
     logSuccess(msg);
+    saveAppliedId(id); // persist so rescan knows it's done
     btn.textContent = 'Done';
     btn.style.color = 'var(--success)';
     const card = document.getElementById(`rec-${id}`);
@@ -360,6 +379,7 @@ function updateScoreAfterApply(id) {
   const rec = currentResult.recommendations.find(r => r.id === id);
   if (!rec || rec.applied) return;
   rec.applied = true;
+  saveAppliedId(id);
 
   const penalty = { critical: 15, high: 8, medium: 3, low: 1 };
   const gain = penalty[rec.priority] || 0;
