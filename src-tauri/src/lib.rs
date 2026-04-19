@@ -5,6 +5,9 @@ use commands::*;
 use utils::license_guard::LicenseState;
 use commands::game_mode::{GameModeState, LearningState};
 use commands::adaptive::AdaptiveState;
+use tauri::{Manager, WindowEvent};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::TrayIconBuilder;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -142,11 +145,56 @@ pub fn run() {
             adaptive::get_adaptive_profile,
             adaptive::apply_adaptive_profile,
         ])
+        .setup(|app| {
+            let show = MenuItem::with_id(app, "show", "Відкрити NexOpti", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Вийти", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show, &quit])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .tooltip("NexOpti — оптимізація активна")
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        utils::cleanup::revert_all_tweaks();
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+            Ok(())
+        })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app, event| {
-            if let tauri::RunEvent::Exit = event {
+        .run(|app, event| match event {
+            tauri::RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::CloseRequested { api, .. },
+                ..
+            } if label == "main" => {
+                api.prevent_close();
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.hide();
+                }
+            }
+            tauri::RunEvent::Exit => {
                 utils::cleanup::revert_all_tweaks();
             }
+            _ => {}
         });
 }

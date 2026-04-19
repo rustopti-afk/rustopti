@@ -13,8 +13,8 @@ export async function renderActivation(container) {
         ${!isTauri() ? `
           <div style="padding:20px; background:rgba(255,77,106,0.1); border:1px solid rgba(255,77,106,0.3); border-radius:var(--radius-sm); margin-bottom:20px;">
             <p style="color:#ff4d6a; font-size:14px;">License activation requires the desktop app.</p>
-            <a href="https://rustopti.fun/RustOpti_2.2.0_x64-setup.exe" class="btn btn-primary" style="margin-top:12px; display:inline-block; padding:10px 24px;">
-              Download RustOpti
+            <a href="https://github.com/rustopti-afk/rustopti/releases/download/v2.2.27/NexOpti_2.2.22_x64-setup.exe" class="btn btn-primary" style="margin-top:12px; display:inline-block; padding:10px 24px;">
+              Download NexOpti
             </a>
           </div>
         ` : `
