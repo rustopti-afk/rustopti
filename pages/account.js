@@ -160,15 +160,15 @@ function renderAccountInfo(container, info) {
         <div style="background:rgba(200,200,200,0.05);border:1px solid rgba(200,200,200,0.1);border-radius:8px;padding:14px 16px">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
-              <div style="color:var(--text-main);font-weight:600;font-size:13px">NexOpti v2.2.27</div>
+              <div style="color:var(--text-main);font-weight:600;font-size:13px">NexOpti v2.2.28</div>
               <div style="color:var(--text-muted);font-size:12px;margin-top:2px">Актуальна версія · Windows x64</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <a href="https://github.com/rustopti-afk/rustopti/releases/download/v2.2.27/NexOpti_2.2.22_x64-setup.exe"
+              <a href="https://github.com/rustopti-afk/rustopti/releases/download/v2.2.28/NexOpti_2.2.28_x64-setup.exe"
                 style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:var(--accent-bright);font-size:12px;font-weight:600;padding:7px 14px;border-radius:6px;text-decoration:none;white-space:nowrap">
                 .EXE Setup
               </a>
-              <a href="https://github.com/rustopti-afk/rustopti/releases/download/v2.2.27/NexOpti_2.2.22_x64_en-US.msi"
+              <a href="https://github.com/rustopti-afk/rustopti/releases/download/v2.2.28/NexOpti_2.2.28_x64_en-US.msi"
                 style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--text-2);font-size:12px;font-weight:600;padding:7px 14px;border-radius:6px;text-decoration:none;white-space:nowrap">
                 .MSI
               </a>
